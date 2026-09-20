@@ -155,7 +155,8 @@ import { datePresets, type DatePreset } from './workspace-preferences.service';
       .context-bar {
         grid-template-columns: 1fr auto;
       }
-      .context-label {
+      .context-label,
+      .saved-note {
         display: none;
       }
     }

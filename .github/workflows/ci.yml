@@ -85,6 +85,14 @@ jobs:
       - run: pnpm nx run-many --target=build --projects=api,web --parallel=1
       - run: pnpm public:check
       - run: pnpm nx e2e web-e2e
+      - name: Upload browser diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-diagnostics
+          path: dist/.playwright/apps/web-e2e/test-output
+          if-no-files-found: ignore
+          retention-days: 7
 
   secrets:
     name: Secret scan
