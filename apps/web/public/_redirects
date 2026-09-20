@@ -1,0 +1,9 @@
+/sign-in /index.html 200
+/access-denied /index.html 200
+/profile /index.html 200
+/workspace/components /index.html 200
+/organizations/*/sales /index.html 200
+/organizations/*/operations /index.html 200
+/organizations/*/team /index.html 200
+/organizations/*/governance /index.html 200
+/organizations/*/accept-invitation /index.html 200

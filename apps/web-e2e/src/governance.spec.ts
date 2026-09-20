@@ -72,6 +72,7 @@ test('governs access, credentials, policy, and profile without leaking secrets',
     timeout: 6_000,
   });
 
+  await page.evaluate(() => window.scrollTo(0, 0));
   await expectNoPageOverflow(page);
   await expect(page).toHaveScreenshot('governance-control.png', {
     animations: 'disabled',

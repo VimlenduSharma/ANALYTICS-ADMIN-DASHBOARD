@@ -1,0 +1,5 @@
+{
+  "name": "@analytics-admin/cloudflare-functions",
+  "private": true,
+  "type": "module"
+}

@@ -18,9 +18,15 @@ export async function signInAndCreateOrganization(
     page.getByRole('heading', { name: 'Workspace overview' }),
   ).toBeVisible();
 
-  const name = ['Workspace', purpose, testInfo.project.name, Date.now()].join(
-    ' ',
-  );
+  // Slugs receive a server-generated suffix; stable visible text keeps layout
+  // assertions deterministic without creating uniqueness conflicts.
+  const stableFixtureId = '1700000000000';
+  const name = [
+    'Workspace',
+    purpose,
+    testInfo.project.name,
+    stableFixtureId,
+  ].join(' ');
   await page.getByLabel('Organization name').fill(name);
   const creationResponse = page.waitForResponse(
     (response) =>

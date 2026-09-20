@@ -81,6 +81,7 @@ const environmentSchema = z
       .min(250)
       .max(10_000)
       .default(1_500),
+    EDGE_PROXY_SECRET: optionalSecret,
     IMPORT_MAX_BYTES: z.coerce
       .number()
       .int()
@@ -111,9 +112,14 @@ const environmentSchema = z
     OIDC_CLIENT_SECRET: optionalText,
     OIDC_ISSUER_URL: optionalUrl,
     OIDC_REDIRECT_URI: optionalUrl,
-    REDIS_URL: z.url().refine((value) => new URL(value).protocol === 'redis:', {
-      message: 'must use the redis protocol',
-    }),
+    REDIS_URL: z
+      .url()
+      .refine(
+        (value) => ['redis:', 'rediss:'].includes(new URL(value).protocol),
+        {
+          message: 'must use the redis or rediss protocol',
+        },
+      ),
     QUEUE_DRAIN_LIMIT: z.coerce.number().int().min(1).max(1_000).default(25),
     QUEUE_MAX_PENDING_PER_ORG: z.coerce
       .number()

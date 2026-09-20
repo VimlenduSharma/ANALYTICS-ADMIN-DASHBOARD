@@ -21,6 +21,7 @@ const violations = tracked.filter((path) =>
 const knownSecrets = [
   'CREDENTIAL_ENCRYPTION_KEY',
   'DATABASE_URL',
+  'EDGE_PROXY_SECRET',
   'METRICS_BEARER_TOKEN',
   'OIDC_CLIENT_SECRET',
   'WEBHOOK_SIGNING_KEY',

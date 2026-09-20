@@ -11,6 +11,7 @@ import {
 } from '@nestjs/platform-fastify';
 import { AppModule } from './app/app.module';
 import { ApiExceptionFilter } from './app/common/api-exception.filter';
+import { acceptsEdgeRequest } from './app/common/edge-origin';
 
 const apiBodyLimitBytes = 10 * 1_024 * 1_024;
 
@@ -25,6 +26,15 @@ async function bootstrap(): Promise<void> {
     { rawBody: true },
   );
   const config = app.get(ConfigService<Environment, true>);
+  const edgeProxySecret = config.get('EDGE_PROXY_SECRET');
+
+  adapter.getInstance().addHook('onRequest', async (request, reply) => {
+    if (acceptsEdgeRequest(request, edgeProxySecret)) return;
+    await reply.code(404).send({
+      code: 'NOT_FOUND',
+      message: 'The requested resource was not found',
+    });
+  });
 
   adapter
     .getInstance()

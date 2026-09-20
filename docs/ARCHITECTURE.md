@@ -10,7 +10,7 @@ PostgreSQL is authoritative for organizations, membership, source data, idempote
 
 ## Request path
 
-The public CDN and WAF terminate TLS and forward only to the private Nginx origin. Nginx serves the Angular build and proxies `/api` to the API service. The API accepts one trusted proxy hop, validates the configured web origin, and applies security headers, request limits, deadlines, and rate admission before domain work starts.
+The public CDN and WAF terminate TLS, serve the Angular build, and proxy same-origin `/api` requests to the API service. The reference container topology uses Nginx for both concerns. The cost-constrained demonstration profile uses Cloudflare Pages for static assets and a narrow Pages Function for the API proxy. Its public Northflank API origin rejects every non-health request that lacks the shared edge proof. In both profiles, the API validates the configured web origin and applies request limits, deadlines, and rate admission before domain work starts.
 
 OpenID Connect sign-in uses Authorization Code with PKCE. The callback exchanges the authorization code on the server, creates an opaque Redis session, and sets a host-only cookie. State-changing browser requests also submit a session-bound CSRF value held in memory.
 

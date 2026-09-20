@@ -53,6 +53,27 @@ describe('config', () => {
     ).toThrow('DATABASE_URL: must use the postgres or postgresql protocol');
   });
 
+  it('accepts a TLS Redis endpoint', () => {
+    expect(
+      loadEnvironment({
+        ...required,
+        REDIS_URL: 'rediss://default:secret@redis.example.test:6379',
+      }).REDIS_URL,
+    ).toBe('rediss://default:secret@redis.example.test:6379');
+  });
+
+  it('rejects a non-Redis dependency URL', () => {
+    expect(() =>
+      loadEnvironment({ ...required, REDIS_URL: 'https://redis.example.test' }),
+    ).toThrow('REDIS_URL: must use the redis or rediss protocol');
+  });
+
+  it('rejects a weak edge proxy secret', () => {
+    expect(() =>
+      loadEnvironment({ ...required, EDGE_PROXY_SECRET: 'too-short' }),
+    ).toThrow('EDGE_PROXY_SECRET');
+  });
+
   it('rejects a missing or weak webhook root key', () => {
     expect(() =>
       loadEnvironment({

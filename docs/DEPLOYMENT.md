@@ -14,12 +14,38 @@ A live environment needs:
 
 The application is provider-neutral. `deploy/compose.release.yaml` is the reference runtime topology and can be translated to a managed container service without changing image behavior.
 
+## Cost-constrained demonstration profile
+
+The supported no-monthly-charge profile is intended for interviews, product demonstrations, learning, and light evaluation traffic. It preserves the production security boundaries, but free providers do not promise the availability, capacity, backup retention, or support response expected from a paid production service.
+
+Use this allocation:
+
+- Cloudflare Pages: Angular assets, TLS, CDN/WAF, `/healthz`, and the same-origin `/api` proxy;
+- Northflank Sandbox: one API service, one worker service, one PostgreSQL add-on, and one migration job;
+- Upstash Redis: TLS Redis endpoint for sessions, rate admission, and coordination;
+- Auth0: a Regular Web Application using Authorization Code with PKCE; and
+- provider-issued `pages.dev` and `code.run` hostnames so no domain purchase is required.
+
+Build Cloudflare Pages from `main` with `pnpm build:web:pages` and publish `dist/apps/web/browser`. Set `NODE_VERSION=24.19.0` and `PNPM_VERSION=11.19.0` as non-secret build variables. Configure `API_ORIGIN` and `EDGE_PROXY_SECRET` as encrypted Pages Function secrets. `API_ORIGIN` is the HTTPS Northflank API origin; `EDGE_PROXY_SECRET` is a generated value of at least 32 characters and must exactly match the API service secret.
+
+Create the Northflank services from `deploy/Containerfile.runtime` with these build arguments:
+
+| Workload       | `APP`        | Public port | Health check           |
+| -------------- | ------------ | ----------- | ---------------------- |
+| API service    | `api`        | `3000`      | `/api/v1/health/ready` |
+| Worker service | `worker`     | none        | process lifecycle      |
+| Migration job  | `migrations` | none        | successful exit        |
+
+The API and worker receive the runtime database URL; only the migration job receives the database-owner URL. Create a separate non-owner login role for `RUNTIME_DATABASE_ROLE` before the first migration. Set the runtime PostgreSQL pool maximum to account for both processes and remain below the add-on connection limit.
+
+Use the Cloudflare `pages.dev` origin as `WEB_ORIGIN`. Register `${WEB_ORIGIN}/api/v1/auth/callback` as the Auth0 Allowed Callback URL and `${WEB_ORIGIN}` as the Allowed Logout and Web Origins. Store Auth0, PostgreSQL, Redis, signing, encryption, metrics, and edge values only in provider secret stores.
+
 ## Public edge
 
 Use a dedicated hostname such as `analytics.example.com`. The CDN/WAF must:
 
 - enforce TLS 1.2 or newer and redirect HTTP to HTTPS;
-- restrict direct origin access to the provider's edge network;
+- restrict direct origin access to the provider's edge network or require an unguessable edge proof that the edge replaces on every request;
 - preserve the original host and client address through exactly one trusted reverse-proxy hop;
 - enforce a request body limit at or below 10 MiB;
 - rate-limit sign-in, webhook, and abusive API traffic without caching authenticated HTML or API responses;
@@ -46,6 +72,7 @@ Inject these values from the environment's managed secret store. Never commit th
 - `OIDC_CLIENT_ID`
 - `OIDC_CLIENT_SECRET`
 - `CREDENTIAL_ENCRYPTION_KEY`
+- `EDGE_PROXY_SECRET` when the API origin is publicly routable
 - `WEBHOOK_SIGNING_KEY`
 - `METRICS_BEARER_TOKEN`
 

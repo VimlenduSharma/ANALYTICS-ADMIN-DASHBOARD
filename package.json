@@ -17,9 +17,11 @@
     "dev:api": "node tools/run-nx.mjs serve api",
     "dev:worker": "node tools/run-nx.mjs serve worker",
     "build": "node tools/run-nx.mjs run-many --target=build --projects=web,api,worker,migrations,api-client,contracts,config,data-core,governance,operations,resilience,sales,testing --parallel=1",
+    "build:web:pages": "node tools/run-nx.mjs build web --configuration=production && node tools/prepare-pages-output.mjs",
     "lint": "node tools/run-nx.mjs run-many --target=lint --all",
     "typecheck": "node tools/run-nx.mjs run-many --target=typecheck --all",
     "test": "node tools/run-nx.mjs run-many --target=test --all",
+    "test:edge": "node --test tools/cloudflare-edge.spec.mjs",
     "integration": "node tools/prepare-local-env.mjs && docker compose up -d --wait && node tools/run-nx.mjs integration api",
     "resilience": "node tools/prepare-local-env.mjs && docker compose up -d --wait && node tools/run-nx.mjs build api && node --env-file-if-exists=.env tools/resilience-integration.mjs",
     "security": "node tools/prepare-local-env.mjs && docker compose up -d --wait && node tools/run-nx.mjs build api && node --env-file-if-exists=.env tools/security-integration.mjs",
@@ -37,7 +39,7 @@
     "release:smoke": "node tools/release-smoke.mjs",
     "format": "node tools/run-nx.mjs format:write",
     "format:check": "node tools/run-nx.mjs format:check",
-    "check": "node tools/run-nx.mjs format:check && node tools/run-nx.mjs run-many --target=lint --all --parallel=3 && node tools/run-nx.mjs run-many --target=typecheck --all --parallel=3 && node tools/run-nx.mjs run-many --target=test --all --parallel=3 && node tools/run-nx.mjs run-many --target=build --projects=web,api,worker,migrations,api-client,contracts,config,data-core,governance,operations,resilience,sales,testing --parallel=1 && node --env-file-if-exists=.env tools/check-public-assets.mjs && node --env-file-if-exists=.env tools/check-public-repository.mjs"
+    "check": "node tools/run-nx.mjs format:check && node tools/run-nx.mjs run-many --target=lint --all --parallel=3 && node tools/run-nx.mjs run-many --target=typecheck --all --parallel=3 && node tools/run-nx.mjs run-many --target=test --all --parallel=3 && node --test tools/cloudflare-edge.spec.mjs && node tools/run-nx.mjs run-many --target=build --projects=web,api,worker,migrations,api-client,contracts,config,data-core,governance,operations,resilience,sales,testing --parallel=1 && node --env-file-if-exists=.env tools/check-public-assets.mjs && node --env-file-if-exists=.env tools/check-public-repository.mjs"
   },
   "private": true,
   "dependencies": {

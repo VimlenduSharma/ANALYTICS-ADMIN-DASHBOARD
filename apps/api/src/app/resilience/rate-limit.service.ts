@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { createHash } from 'node:crypto';
 import { RedisService } from '../infrastructure/redis.service';
+import { trustedClientIdentity } from '../common/edge-origin';
 
 const consumeScript = `
 local count = redis.call('INCR', KEYS[1])
@@ -18,6 +19,7 @@ return {count, redis.call('TTL', KEYS[1])}
 
 @Injectable()
 export class RateLimitService {
+  private readonly edgeProxyEnabled: boolean;
   private readonly limits: Record<'api' | 'auth' | 'webhook', number>;
   private readonly windowSeconds: number;
 
@@ -25,6 +27,7 @@ export class RateLimitService {
     config: ConfigService<Environment, true>,
     private readonly redis: RedisService,
   ) {
+    this.edgeProxyEnabled = Boolean(config.get('EDGE_PROXY_SECRET'));
     this.windowSeconds = config.getOrThrow('RATE_LIMIT_WINDOW_SECONDS');
     this.limits = {
       api: config.getOrThrow('RATE_LIMIT_API_MAX'),
@@ -46,7 +49,7 @@ export class RateLimitService {
     const identity =
       request.cookies.aad_session ??
       request.cookies['__Host-aad_session'] ??
-      request.ip;
+      trustedClientIdentity(request, this.edgeProxyEnabled);
     const digest = createHash('sha256').update(identity).digest('hex');
     const window = Math.floor(Date.now() / (this.windowSeconds * 1_000));
 

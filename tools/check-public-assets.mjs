@@ -5,6 +5,7 @@ const browserRoot = join(process.cwd(), 'dist/apps/web/browser');
 const secretNames = [
   'CREDENTIAL_ENCRYPTION_KEY',
   'DATABASE_URL',
+  'EDGE_PROXY_SECRET',
   'METRICS_BEARER_TOKEN',
   'OIDC_CLIENT_SECRET',
   'POSTGRES_PASSWORD',
