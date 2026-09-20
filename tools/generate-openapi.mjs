@@ -26,6 +26,7 @@ const server = spawn(process.execPath, ['dist/apps/api/main.js'], {
     ...process.env,
     API_HOST: '127.0.0.1',
     API_PORT: String(port),
+    APP_VERSION: '0.1.0',
     NODE_ENV: 'test',
     OIDC_CLIENT_ID: '',
     OIDC_CLIENT_SECRET: '',
