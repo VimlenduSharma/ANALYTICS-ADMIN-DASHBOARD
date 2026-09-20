@@ -4,6 +4,7 @@ import { workspaceRoot } from '@nx/devkit';
 
 const baseURL = process.env['BASE_URL'] || 'http://localhost:4200';
 const node = `"${process.execPath}"`;
+const webServerTimeout = 180_000;
 
 export default defineConfig({
   ...nxE2EPreset(import.meta.dirname, { testDir: './src' }),
@@ -21,12 +22,14 @@ export default defineConfig({
       url: 'http://127.0.0.1:4300/health',
       reuseExistingServer: false,
       cwd: workspaceRoot,
+      timeout: webServerTimeout,
     },
     {
       command: `${node} tools/run-nx.mjs serve api`,
       url: 'http://127.0.0.1:3000/api/v1/health/live',
       reuseExistingServer: false,
       cwd: workspaceRoot,
+      timeout: webServerTimeout,
       env: {
         NODE_ENV: 'test',
         OIDC_CLIENT_ID: 'analytics-admin-e2e',
@@ -42,6 +45,7 @@ export default defineConfig({
       url: 'http://localhost:4200',
       reuseExistingServer: false,
       cwd: workspaceRoot,
+      timeout: webServerTimeout,
     },
   ],
   projects: [
