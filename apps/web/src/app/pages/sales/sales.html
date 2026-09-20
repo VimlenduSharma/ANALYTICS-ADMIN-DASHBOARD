@@ -1,0 +1,503 @@
+<article class="sales-page" [attr.aria-busy]="loading()">
+  <header class="sales-heading">
+    <div>
+      <p class="eyebrow"><span></span> Decision-ready sales</p>
+      <h1>Sales performance</h1>
+      <p>
+        Reconciled revenue, order, and product signals for
+        <strong>{{ organization()?.name || 'this organization' }}</strong>.
+      </p>
+    </div>
+    <div class="heading-actions">
+      @if (overview(); as data) {
+      <span class="freshness" [class]="'freshness ' + data.freshness.status">
+        <i></i>{{ data.freshness.status }}
+      </span>
+      }
+      <button
+        class="ui-button secondary"
+        type="button"
+        [disabled]="exporting() || !overview()"
+        (click)="startExport()"
+      >
+        {{ exporting() ? 'Preparing…' : 'Export orders' }}
+      </button>
+    </div>
+  </header>
+
+  <form
+    class="filter-panel"
+    aria-label="Sales filters"
+    (submit)="applySearch(); $event.preventDefault()"
+  >
+    <label>
+      <span>Currency</span>
+      <select
+        aria-label="Currency"
+        [value]="currentQuery().currency || ''"
+        (change)="applyFilter('currency', $event)"
+      >
+        @for (currency of options()?.currencies || []; track currency) {
+        <option [value]="currency">{{ currency }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      <span>Channel</span>
+      <select
+        aria-label="Sales channel"
+        [value]="currentQuery().channelId || ''"
+        (change)="applyFilter('channelId', $event)"
+      >
+        <option value="">All channels</option>
+        @for (channel of options()?.channels || []; track channel.id) {
+        <option [value]="channel.id">{{ channel.label }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      <span>Location</span>
+      <select
+        aria-label="Location"
+        [value]="currentQuery().locationId || ''"
+        (change)="applyFilter('locationId', $event)"
+      >
+        <option value="">All locations</option>
+        @for (location of options()?.locations || []; track location.id) {
+        <option [value]="location.id">{{ location.label }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      <span>Product</span>
+      <select
+        aria-label="Product"
+        [value]="currentQuery().productId || ''"
+        (change)="applyFilter('productId', $event)"
+      >
+        <option value="">All products</option>
+        @for (product of options()?.products || []; track product.id) {
+        <option [value]="product.id">
+          {{ product.label }} · {{ product.sku }}
+        </option>
+        }
+      </select>
+    </label>
+    <label>
+      <span>Status</span>
+      <select
+        aria-label="Order status"
+        [value]="currentQuery().status || ''"
+        (change)="applyFilter('status', $event)"
+      >
+        <option value="">All statuses</option>
+        <option value="pending">Pending</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="fulfilled">Fulfilled</option>
+        <option value="refunded">Refunded</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </label>
+    <label class="search-field">
+      <span>Find an order</span>
+      <input
+        type="search"
+        [formControl]="search"
+        maxlength="120"
+        placeholder="Number or source reference"
+      />
+    </label>
+    <button class="filter-submit" type="submit">Apply</button>
+    <button class="filter-clear" type="button" (click)="clearFilters()">
+      Clear
+    </button>
+  </form>
+
+  @if (error(); as message) { @if (overview()) {
+  <aad-banner tone="error" title="Sales refresh failed">
+    {{ message }} Existing figures remain visible while you retry.
+    <button class="inline-retry" type="button" (click)="retry()">
+      Try again
+    </button>
+  </aad-banner>
+  } @else {
+  <aad-state-panel
+    kind="error"
+    title="Sales analytics unavailable"
+    [message]="message"
+    actionLabel="Try again"
+    (action)="retry()"
+  />
+  } } @if (loading() && !overview()) {
+  <section class="loading-grid" aria-label="Loading sales analytics">
+    <aad-state-panel
+      kind="loading"
+      title="Reconciling sales"
+      message="Calculating filtered source totals, comparison periods, and segments."
+    />
+    <div class="skeleton-card" aria-hidden="true"></div>
+  </section>
+  } @else if (overview(); as data) { @if (data.freshness.status === 'empty') {
+  <aad-state-panel
+    kind="empty"
+    title="No committed sales yet"
+    [message]="freshnessMessage(data)"
+    actionLabel="Refresh"
+    (action)="retry()"
+  />
+  } @else { @if (data.freshness.status === 'partial' || data.freshness.status
+  === 'stale') {
+  <aad-banner
+    [tone]="data.freshness.status === 'partial' ? 'warning' : 'info'"
+    [title]="data.freshness.status === 'partial' ? 'Partial source freshness' : 'Sales source may be stale'"
+  >
+    {{ freshnessMessage(data) }}
+  </aad-banner>
+  }
+
+  <section class="kpi-grid" aria-label="Sales key performance indicators">
+    <article>
+      <p>Net revenue</p>
+      <strong
+        >{{ money(data.kpis.revenueMinor.current, data.currency) }}</strong
+      >
+      <small
+        [class.negative]="(data.kpis.revenueMinor.changeBasisPoints || 0) < 0"
+        >{{ comparison(data.kpis.revenueMinor.changeBasisPoints) }}</small
+      >
+    </article>
+    <article>
+      <p>Orders</p>
+      <strong>{{ integer(data.kpis.orderCount.current) }}</strong>
+      <small
+        [class.negative]="(data.kpis.orderCount.changeBasisPoints || 0) < 0"
+        >{{ comparison(data.kpis.orderCount.changeBasisPoints) }}</small
+      >
+    </article>
+    <article>
+      <p>Average order value</p>
+      <strong
+        >{{ money(data.kpis.averageOrderValueMinor.current, data.currency)
+        }}</strong
+      >
+      <small
+        [class.negative]="(data.kpis.averageOrderValueMinor.changeBasisPoints || 0) < 0"
+        >{{ comparison(data.kpis.averageOrderValueMinor.changeBasisPoints)
+        }}</small
+      >
+    </article>
+    <article>
+      <p>Items sold</p>
+      <strong>{{ integer(data.kpis.itemsSold.current) }}</strong>
+      <small [class.negative]="(data.kpis.itemsSold.changeBasisPoints || 0) < 0"
+        >{{ comparison(data.kpis.itemsSold.changeBasisPoints) }}</small
+      >
+    </article>
+  </section>
+
+  <section class="chart-card" aria-labelledby="sales-trend-title">
+    <header>
+      <div>
+        <p class="section-kicker">UTC · {{ data.granularity }}</p>
+        <h2 id="sales-trend-title">Sales trend</h2>
+      </div>
+      <p>
+        {{ data.filters.from | date: 'mediumDate' : 'UTC' }} — {{
+        data.filters.to | date: 'mediumDate' : 'UTC' }}
+      </p>
+    </header>
+    <aad-sales-trend-chart
+      [points]="data.trend"
+      [currency]="data.currency || 'USD'"
+    />
+  </section>
+
+  <section class="segment-grid" aria-label="Sales segmentation">
+    <article>
+      <header>
+        <div>
+          <p class="section-kicker">Mix</p>
+          <h2>Channels</h2>
+        </div>
+        <span>Net revenue</span>
+      </header>
+      <ol>
+        @for (segment of data.channels; track segment.id || segment.label) {
+        <li>
+          <div>
+            <strong>{{ segment.label }}</strong
+            ><span>{{ segment.orderCount }} orders</span>
+          </div>
+          <p>{{ money(segment.revenueMinor, data.currency) }}</p>
+          <i [style.width.%]="segment.shareBasisPoints / 100"></i>
+        </li>
+        } @empty {
+        <li class="segment-empty">No channel activity</li>
+        }
+      </ol>
+    </article>
+    <article>
+      <header>
+        <div>
+          <p class="section-kicker">Mix</p>
+          <h2>Locations</h2>
+        </div>
+        <span>Net revenue</span>
+      </header>
+      <ol>
+        @for (segment of data.locations; track segment.id || segment.label) {
+        <li>
+          <div>
+            <strong>{{ segment.label }}</strong
+            ><span>{{ segment.orderCount }} orders</span>
+          </div>
+          <p>{{ money(segment.revenueMinor, data.currency) }}</p>
+          <i [style.width.%]="segment.shareBasisPoints / 100"></i>
+        </li>
+        } @empty {
+        <li class="segment-empty">No location activity</li>
+        }
+      </ol>
+    </article>
+    <article>
+      <header>
+        <div>
+          <p class="section-kicker">Merchandise</p>
+          <h2>Products</h2>
+        </div>
+        <span>Line sales</span>
+      </header>
+      <ol>
+        @for (segment of data.products; track segment.id || segment.sku) {
+        <li>
+          <div>
+            <strong>{{ segment.label }}</strong
+            ><span>{{ segment.sku }} · {{ segment.orderCount }} orders</span>
+          </div>
+          <p>{{ money(segment.revenueMinor, data.currency) }}</p>
+          <i [style.width.%]="segment.shareBasisPoints / 100"></i>
+        </li>
+        } @empty {
+        <li class="segment-empty">No product activity</li>
+        }
+      </ol>
+    </article>
+  </section>
+
+  <section class="orders-card" aria-labelledby="orders-title">
+    <header>
+      <div>
+        <p class="section-kicker">Source records</p>
+        <h2 id="orders-title">Orders</h2>
+      </div>
+      <div class="sort-controls">
+        <label
+          ><span class="sr-only">Sort orders</span
+          ><select
+            aria-label="Sort orders"
+            [value]="currentQuery().sort"
+            (change)="changeSort($event)"
+          >
+            @for (sort of sortOptions; track sort.value) {
+            <option [value]="sort.value">{{ sort.label }}</option>
+            }
+          </select></label
+        >
+        <button
+          type="button"
+          (click)="toggleDirection()"
+          [attr.aria-label]="'Sort ' + currentQuery().direction"
+        >
+          {{ currentQuery().direction === 'desc' ? '↓' : '↑' }}
+        </button>
+      </div>
+    </header>
+    <div class="table-scroll">
+      <table>
+        <caption class="sr-only">
+          Filtered sales orders
+        </caption>
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Placed</th>
+            <th>Channel</th>
+            <th>Status</th>
+            <th>Items</th>
+            <th>Net revenue</th>
+            <th><span class="sr-only">Action</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (order of orders()?.items || []; track order.id) {
+          <tr>
+            <td>
+              <strong>{{ order.orderNumber }}</strong
+              ><small>{{ order.location?.label || 'No location' }}</small>
+            </td>
+            <td>{{ order.occurredAt | date: 'medium' : 'UTC' }}</td>
+            <td>{{ order.channel.label }}</td>
+            <td>
+              <span [class]="'status ' + order.status">{{ order.status }}</span>
+            </td>
+            <td>{{ order.itemCount }}</td>
+            <td class="money">
+              {{ money(order.netRevenueMinor, order.currency) }}
+            </td>
+            <td>
+              <button
+                class="row-action"
+                type="button"
+                (click)="openOrder(order.id)"
+                [attr.aria-label]="'Open order ' + order.orderNumber"
+              >
+                Open
+              </button>
+            </td>
+          </tr>
+          } @empty {
+          <tr>
+            <td colspan="7" class="empty-row">
+              No source orders match these filters.
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <footer>
+      <button
+        type="button"
+        [disabled]="!currentQuery().cursor"
+        (click)="previousPage()"
+      >
+        Previous
+      </button>
+      <span
+        >Up to {{ orders()?.pageInfo.pageSize || 25 }} records per page</span
+      >
+      <button
+        type="button"
+        [disabled]="!orders()?.pageInfo.hasNextPage"
+        (click)="nextPage()"
+      >
+        Next
+      </button>
+    </footer>
+  </section>
+
+  <details class="definitions">
+    <summary>Metric definitions and freshness</summary>
+    <dl>
+      @for (definition of data.definitions; track definition.id) {
+      <div>
+        <dt>{{ definition.label }}</dt>
+        <dd>{{ definition.description }}</dd>
+      </div>
+      }
+      <div>
+        <dt>Data through</dt>
+        <dd>
+          {{ data.freshness.dataThrough ? (data.freshness.dataThrough | date:
+          'medium' : 'UTC') : 'No records' }}
+        </dd>
+      </div>
+    </dl>
+  </details>
+  } } @if (exportJob(); as job) {
+  <aside class="export-status" role="status">
+    <div>
+      <strong>Order export · {{ job.status }}</strong
+      ><span>{{ job.rowCount }} rows</span>
+    </div>
+    @if (job.downloadReady) {<a class="ui-button" [href]="exportUrl(job)"
+      >Download CSV</a
+    >}
+    <button
+      type="button"
+      aria-label="Dismiss export status"
+      (click)="exportJob.set(undefined)"
+    >
+      ×
+    </button>
+  </aside>
+  }
+
+  <aad-dialog
+    [open]="detailLoading() || !!detail()"
+    labelledBy="order-detail-title"
+    describedBy="order-detail-description"
+    (dismissed)="closeOrder()"
+  >
+    <section class="order-detail">
+      @if (detail(); as order) {
+      <header>
+        <div>
+          <p class="section-kicker">Order drill-down</p>
+          <h2 id="order-detail-title">{{ order.orderNumber }}</h2>
+          <p id="order-detail-description">
+            {{ order.channel.label }} · {{ order.occurredAt | date: 'medium' :
+            'UTC' }}
+          </p>
+        </div>
+        <button
+          type="button"
+          aria-label="Close order details"
+          (click)="closeOrder()"
+        >
+          ×
+        </button>
+      </header>
+      <dl class="order-totals">
+        <div>
+          <dt>Subtotal</dt>
+          <dd>{{ money(order.subtotalMinor, order.currency) }}</dd>
+        </div>
+        <div>
+          <dt>Tax</dt>
+          <dd>{{ money(order.taxMinor, order.currency) }}</dd>
+        </div>
+        <div>
+          <dt>Shipping</dt>
+          <dd>{{ money(order.shippingMinor, order.currency) }}</dd>
+        </div>
+        <div>
+          <dt>Discount</dt>
+          <dd>−{{ money(order.discountMinor, order.currency) }}</dd>
+        </div>
+        <div>
+          <dt>Refunded</dt>
+          <dd>−{{ money(order.refundedMinor, order.currency) }}</dd>
+        </div>
+        <div class="total">
+          <dt>Net revenue</dt>
+          <dd>{{ money(order.netRevenueMinor, order.currency) }}</dd>
+        </div>
+      </dl>
+      <h3>Line items</h3>
+      <ul class="line-items">
+        @for (item of order.items; track item.id) {
+        <li>
+          <div>
+            <strong>{{ item.name }}</strong
+            ><span>{{ item.sku }} · Qty {{ item.quantity }}</span>
+          </div>
+          <b>{{ money(item.totalMinor, order.currency) }}</b>
+        </li>
+        }
+      </ul>
+      @if (order.customerReference) {
+      <p class="reference">
+        Customer reference <strong>{{ order.customerReference }}</strong>
+      </p>
+      } } @else {
+      <aad-state-panel
+        kind="loading"
+        title="Loading order"
+        message="Resolving source lines, payments, returns, and fulfilment."
+        [compact]="true"
+      />
+      }
+    </section>
+  </aad-dialog>
+</article>

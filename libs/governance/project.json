@@ -1,0 +1,32 @@
+{
+  "name": "governance",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/governance/src",
+  "projectType": "library",
+  "tags": ["scope:server", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/governance",
+        "main": "libs/governance/src/index.ts",
+        "tsConfig": "libs/governance/tsconfig.lib.json"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p libs/governance/tsconfig.lib.json"
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/libs/governance"],
+      "options": {
+        "jestConfig": "libs/governance/jest.config.cts",
+        "passWithNoTests": false
+      }
+    }
+  }
+}

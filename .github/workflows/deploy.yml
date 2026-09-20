@@ -1,0 +1,71 @@
+name: Deploy release
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Protected GitHub environment
+        required: true
+        type: choice
+        options: [staging, production]
+      image_tag:
+        description: Published immutable commit SHA tag
+        required: true
+        type: string
+      operation:
+        description: Deployment intent
+        required: true
+        default: deploy
+        type: choice
+        options: [deploy, rollback]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: ${{ inputs.operation }} ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+      - name: Validate release inputs
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          if [[ ! "$IMAGE_TAG" =~ ^[0-9a-f]{40}$ ]]; then
+            echo 'image_tag must be a complete commit SHA' >&2
+            exit 1
+          fi
+      - name: Request guarded deployment
+        env:
+          DEPLOY_WEBHOOK_TOKEN: ${{ secrets.DEPLOY_WEBHOOK_TOKEN }}
+          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          OPERATION: ${{ inputs.operation }}
+        run: |
+          test -n "$DEPLOY_WEBHOOK_URL"
+          test -n "$DEPLOY_WEBHOOK_TOKEN"
+          payload=$(jq -cn \
+            --arg environment "$ENVIRONMENT" \
+            --arg imageTag "$IMAGE_TAG" \
+            --arg operation "$OPERATION" \
+            '{environment: $environment, imageTag: $imageTag, operation: $operation}')
+          curl --fail-with-body --silent --show-error \
+            --connect-timeout 10 --max-time 120 \
+            --header "Authorization: Bearer $DEPLOY_WEBHOOK_TOKEN" \
+            --header 'Content-Type: application/json' \
+            --data "$payload" \
+            "$DEPLOY_WEBHOOK_URL"
+      - name: Verify promoted release
+        env:
+          APPLICATION_URL: ${{ vars.APPLICATION_URL }}
+        run: node tools/release-smoke.mjs

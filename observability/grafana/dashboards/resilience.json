@@ -1,0 +1,107 @@
+{
+  "annotations": { "list": [] },
+  "editable": false,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [
+        { "expr": "sum(rate(analytics_api_requests_total[5m]))", "refId": "A" }
+      ],
+      "title": "Request rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "percentunit" } },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "id": 2,
+      "targets": [
+        {
+          "expr": "sum(rate(analytics_api_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum(rate(analytics_api_requests_total[5m])), 0.001)",
+          "refId": "A"
+        }
+      ],
+      "title": "Server error rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "id": 3,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(analytics_api_request_duration_seconds_bucket[5m])))",
+          "refId": "A"
+        }
+      ],
+      "title": "API p95 latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "id": 4,
+      "targets": [
+        {
+          "expr": "sum by (result) (rate(analytics_cache_requests_total[5m]))",
+          "legendFormat": "{{result}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Cache outcomes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "id": 5,
+      "targets": [
+        {
+          "expr": "analytics_database_pool_connections",
+          "legendFormat": "{{state}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Database pool",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "id": 6,
+      "targets": [
+        {
+          "expr": "analytics_dependency_circuit_open",
+          "legendFormat": "{{dependency}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Dependency circuits",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 41,
+  "tags": ["analytics-admin", "resilience"],
+  "templating": {
+    "list": [
+      {
+        "current": { "text": "Prometheus", "value": "Prometheus" },
+        "hide": 2,
+        "label": "Prometheus",
+        "name": "DS_PROMETHEUS",
+        "query": "prometheus",
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Analytics Admin · Resilience",
+  "uid": "analytics-admin-resilience",
+  "version": 1
+}

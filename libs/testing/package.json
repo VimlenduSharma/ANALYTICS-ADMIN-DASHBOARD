@@ -1,0 +1,12 @@
+{
+  "name": "@analytics-admin/testing",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "dependencies": {
+    "@analytics-admin/contracts": "workspace:*",
+    "tslib": "2.8.1"
+  }
+}

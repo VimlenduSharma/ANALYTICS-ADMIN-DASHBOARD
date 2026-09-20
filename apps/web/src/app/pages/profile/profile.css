@@ -1,0 +1,135 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.profile-page {
+  display: grid;
+  gap: 24px;
+  width: min(100%, 900px);
+  margin: 0 auto;
+  padding: clamp(24px, 5vw, 64px);
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 18px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--accent-strong);
+  font-size: 0.65rem;
+  font-weight: 820;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.eyebrow span {
+  width: 20px;
+  height: 1px;
+  background: var(--accent);
+}
+
+h1 {
+  margin: 10px 0 0;
+  font-size: clamp(1.8rem, 4vw, 3.4rem);
+  letter-spacing: -0.055em;
+  line-height: 1.02;
+}
+
+header > p:last-child {
+  max-width: 650px;
+  margin: 13px 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.65;
+}
+
+.profile-card {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.7fr) minmax(320px, 1fr);
+  gap: 28px;
+  padding: clamp(20px, 4vw, 34px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.identity-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.identity-card > span {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: 14px;
+  color: white;
+  background: #0e5149;
+  font-weight: 820;
+}
+
+.identity-card p,
+.identity-card small {
+  color: var(--text-subtle);
+  font-size: 0.65rem;
+}
+
+.identity-card p {
+  margin: 0 0 5px;
+  font-weight: 760;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.identity-card a {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.identity-card small {
+  display: block;
+  margin-top: 8px;
+  line-height: 1.45;
+}
+
+form {
+  display: grid;
+  gap: 17px;
+}
+
+form .ui-button {
+  width: fit-content;
+}
+
+@media (max-width: 720px) {
+  .profile-page {
+    padding: 22px 14px 100px;
+  }
+
+  .profile-card {
+    grid-template-columns: 1fr;
+  }
+}

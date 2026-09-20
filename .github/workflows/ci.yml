@@ -1,0 +1,98 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm peers check
+      - run: pnpm check
+      - run: pnpm public:repo
+
+  browser:
+    name: Browser journey
+    runs-on: ubuntu-latest
+    env:
+      API_HOST: 0.0.0.0
+      API_PORT: 3000
+      APP_VERSION: 0.1.0-ci
+      CREDENTIAL_ENCRYPTION_KEY: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      DATABASE_URL: postgresql://analytics_admin:ci-only-password@127.0.0.1:5432/analytics_admin
+      NODE_ENV: test
+      REDIS_URL: redis://127.0.0.1:6379
+      WEB_ORIGIN: http://localhost:4200
+      WEBHOOK_SIGNING_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      WORKER_HEARTBEAT_MS: 60000
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_DB: analytics_admin
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_USER: analytics_admin
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U analytics_admin -d analytics_admin"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7.4.5-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm playwright install --with-deps chromium
+      - run: pnpm nx integration api
+      - run: pnpm migrate:test
+      - run: node tools/security-integration.mjs
+      - run: pnpm openapi:check
+      - run: pnpm nx run-many --target=build --projects=api,web --parallel=1
+      - run: pnpm public:check
+      - run: pnpm nx e2e web-e2e
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

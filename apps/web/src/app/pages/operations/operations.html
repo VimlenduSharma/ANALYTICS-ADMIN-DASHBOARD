@@ -1,0 +1,581 @@
+<article class="operations-page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow"><span></span> Operational control</p>
+      <h1>See risk before it becomes delay.</h1>
+      <p class="page-intro">
+        Service deadlines, backlog, returns, and stock exposure for
+        <strong>{{ organization()?.name ?? 'this organization' }}</strong>.
+      </p>
+    </div>
+    <div class="header-actions">
+      <span class="risk-count">
+        <strong>{{ activeAlerts().length }}</strong>
+        active {{ activeAlerts().length === 1 ? 'alert' : 'alerts' }}
+      </span>
+      @if (canManage()) {
+      <button
+        class="ui-button secondary"
+        type="button"
+        (click)="openSettings()"
+      >
+        Configure thresholds
+      </button>
+      }
+    </div>
+  </header>
+
+  @if (loading() && !overview()) {
+  <aad-state-panel
+    kind="loading"
+    title="Building the operations picture"
+    message="Reconciling source freshness, service deadlines, stock positions, and workflow exceptions."
+  />
+  } @else if (error() && !overview()) {
+  <aad-state-panel
+    kind="error"
+    title="Operations could not be loaded"
+    [message]="error() ?? ''"
+    actionLabel="Try again"
+    (action)="retry()"
+  />
+  } @else if (overview(); as view) {
+  <aad-banner
+    [tone]="view.health.status === 'healthy' ? 'success' : view.health.status === 'empty' ? 'info' : 'warning'"
+    [title]="healthTitle(view)"
+  >
+    {{ healthMessage(view) }}
+  </aad-banner>
+
+  <section class="source-strip" aria-label="Operational source health">
+    @for (source of view.health.sources; track source.source) {
+    <article [class]="'source ' + source.status">
+      <span aria-hidden="true"></span>
+      <div>
+        <strong>{{ source.source }}</strong>
+        <small>
+          {{ source.status }} @if (source.lastReceivedAt) { · {{
+          source.lastReceivedAt | date: 'MMM d, HH:mm' }} }
+        </small>
+      </div>
+    </article>
+    }
+  </section>
+
+  <section class="kpi-grid" aria-label="Operations key performance indicators">
+    <article class="kpi-card primary">
+      <span class="kpi-icon" aria-hidden="true">↗</span>
+      <p>Service level</p>
+      <strong>{{ percent(view.kpis.serviceLevelBasisPoints) }}</strong>
+      <small>Shipped on or before the local cutoff deadline</small>
+    </article>
+    <article class="kpi-card">
+      <span class="kpi-icon" aria-hidden="true">◷</span>
+      <p>Fulfilment lead time</p>
+      <strong>{{ duration(view.kpis.averageFulfilmentLeadMinutes) }}</strong>
+      <small>Order received to first recorded shipment</small>
+    </article>
+    <article class="kpi-card" [class.at-risk]="view.kpis.backlogCount > 0">
+      <span class="kpi-icon" aria-hidden="true">≡</span>
+      <p>Open backlog</p>
+      <strong>{{ view.kpis.backlogCount.toLocaleString() }}</strong>
+      <small>Commercial orders without a shipment</small>
+    </article>
+    <article class="kpi-card" [class.at-risk]="view.kpis.lowStockCount > 0">
+      <span class="kpi-icon" aria-hidden="true">□</span>
+      <p>Low-stock positions</p>
+      <strong>{{ view.kpis.lowStockCount.toLocaleString() }}</strong>
+      <small
+        >{{ quantity(view.kpis.stockOnHandQuantity) }} total units on
+        hand</small
+      >
+    </article>
+    <article class="kpi-card compact">
+      <p>Cancellation rate</p>
+      <strong>{{ percent(view.kpis.cancellationRateBasisPoints) }}</strong>
+      <small
+        >Threshold {{ percent(view.thresholds.cancellationWarningBasisPoints)
+        }}</small
+      >
+    </article>
+    <article class="kpi-card compact">
+      <p>Return rate</p>
+      <strong>{{ percent(view.kpis.returnRateBasisPoints) }}</strong>
+      <small
+        >Threshold {{ percent(view.thresholds.returnWarningBasisPoints)
+        }}</small
+      >
+    </article>
+  </section>
+
+  <section class="control-grid">
+    <article class="panel alerts-panel">
+      <header class="panel-header">
+        <div>
+          <p class="section-kicker">Decision queue</p>
+          <h2>Actionable alerts</h2>
+        </div>
+        <span>{{ view.alerts.length }} total</span>
+      </header>
+
+      <div class="alerts-list">
+        @for (alert of view.alerts; track alert.key) {
+        <article
+          class="alert-card"
+          [class.is-acknowledged]="alert.status === 'acknowledged'"
+        >
+          <span
+            [class]="'severity-mark ' + alert.severity"
+            aria-hidden="true"
+          ></span>
+          <div class="alert-copy">
+            <p>
+              <span [class]="'severity ' + alert.severity"
+                >{{ alert.severity }}</span
+              >
+              @if (alert.status === 'acknowledged') {
+              <span class="acknowledged">Acknowledged</span>
+              }
+            </p>
+            <h3>{{ alert.title }}</h3>
+            <p>{{ alert.message }}</p>
+            <div class="alert-actions">
+              <button type="button" (click)="reviewAlert(alert)">
+                {{ alert.actionLabel }}
+              </button>
+              @if (canOperate()) {
+              <button class="quiet" type="button" (click)="toggleAlert(alert)">
+                {{ alert.status === 'active' ? 'Acknowledge' : 'Reopen' }}
+              </button>
+              }
+            </div>
+          </div>
+        </article>
+        } @empty {
+        <aad-state-panel
+          kind="success"
+          title="No threshold alerts"
+          message="Current signals remain within the configured organization policy. Source-health warnings are reported separately above."
+          [compact]="true"
+        />
+        }
+      </div>
+    </article>
+
+    <article class="panel policy-panel">
+      <header class="panel-header">
+        <div>
+          <p class="section-kicker">Policy in force</p>
+          <h2>Cutoff & thresholds</h2>
+        </div>
+        <span>{{ view.thresholds.timezone }}</span>
+      </header>
+      <dl>
+        <div>
+          <dt>Daily cutoff</dt>
+          <dd>{{ view.thresholds.cutoffLocalTime }}</dd>
+        </div>
+        <div>
+          <dt>Ship target</dt>
+          <dd>{{ duration(view.thresholds.fulfilmentTargetMinutes) }}</dd>
+        </div>
+        <div>
+          <dt>Backlog warning</dt>
+          <dd>{{ duration(view.thresholds.backlogWarningMinutes) }}</dd>
+        </div>
+        <div>
+          <dt>Critical backlog</dt>
+          <dd>{{ duration(view.thresholds.backlogCriticalMinutes) }}</dd>
+        </div>
+        <div>
+          <dt>Stock buffer</dt>
+          <dd>{{ quantity(view.thresholds.lowStockBufferQuantity) }}</dd>
+        </div>
+        <div>
+          <dt>Freshness window</dt>
+          <dd>{{ duration(view.thresholds.dataStaleAfterMinutes) }}</dd>
+        </div>
+      </dl>
+      <p class="policy-note">
+        Orders placed after the local cutoff roll to the next service day.
+        PostgreSQL resolves timezone and daylight-saving boundaries.
+      </p>
+    </article>
+  </section>
+
+  <section class="panel location-panel" aria-labelledby="location-title">
+    <header class="panel-header">
+      <div>
+        <p class="section-kicker">Network view</p>
+        <h2 id="location-title">Location service levels</h2>
+      </div>
+      <span>{{ view.locations.length }} locations</span>
+    </header>
+    <div
+      class="table-scroll"
+      tabindex="0"
+      aria-label="Scrollable location service-level table"
+    >
+      <table>
+        <thead>
+          <tr>
+            <th>Location</th>
+            <th>Source</th>
+            <th>Service level</th>
+            <th>Lead time</th>
+            <th>Backlog</th>
+            <th>Overdue</th>
+            <th>Stock risk</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (location of view.locations; track location.id ?? location.label)
+          {
+          <tr>
+            <th scope="row">
+              {{ location.label }}
+              <small>{{ location.timezone }}</small>
+            </th>
+            <td>
+              <span [class]="'source-badge ' + location.sourceStatus"
+                >{{ location.sourceStatus }}</span
+              >
+            </td>
+            <td>{{ percent(location.serviceLevelBasisPoints) }}</td>
+            <td>{{ duration(location.averageFulfilmentLeadMinutes) }}</td>
+            <td>{{ location.backlogCount.toLocaleString() }}</td>
+            <td>{{ location.overdueCount.toLocaleString() }}</td>
+            <td>{{ location.lowStockCount.toLocaleString() }}</td>
+          </tr>
+          } @empty {
+          <tr>
+            <td colspan="7">No locations have been received for this scope.</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel issues-panel" aria-labelledby="issues-title">
+    <header class="panel-header issues-header">
+      <div>
+        <p class="section-kicker">Exception workbench</p>
+        <h2 id="issues-title">Issue drill-down</h2>
+      </div>
+      <button class="clear-button" type="button" (click)="clearFilters()">
+        Clear filters
+      </button>
+    </header>
+
+    <div class="issue-filters" aria-label="Issue filters">
+      <label>
+        <span>Location</span>
+        <select
+          aria-label="Location filter"
+          [value]="view.filters.locationId ?? ''"
+          (change)="applyFilter('locationId', $event)"
+        >
+          <option value="">All locations</option>
+          @for (location of view.locations; track location.id ?? location.label)
+          { @if (location.id) {
+          <option [value]="location.id">{{ location.label }}</option>
+          } }
+        </select>
+      </label>
+      <label>
+        <span>Issue</span>
+        <select
+          aria-label="Issue type filter"
+          [value]="view.filters.issueType ?? ''"
+          (change)="applyFilter('issueType', $event)"
+        >
+          <option value="">All issue types</option>
+          @for (option of issueTypes; track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        <span>Severity</span>
+        <select
+          aria-label="Severity filter"
+          [value]="view.filters.severity ?? ''"
+          (change)="applyFilter('severity', $event)"
+        >
+          <option value="">All severities</option>
+          @for (option of severities; track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+    </div>
+
+    @if (error()) {
+    <aad-banner tone="error" title="Issue list may be out of date"
+      >{{ error() }}
+      <button class="inline-retry" type="button" (click)="retry()">
+        Try again
+      </button></aad-banner
+    >
+    }
+
+    <div
+      class="table-scroll issues-table"
+      tabindex="0"
+      aria-label="Scrollable operations issue table"
+    >
+      <table>
+        <thead>
+          <tr>
+            <th>Severity</th>
+            <th>Issue</th>
+            <th>Location</th>
+            <th>Observed</th>
+            <th>Exposure</th>
+            <th><span class="sr-only">Action</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (issue of issues()?.items ?? []; track issue.id) {
+          <tr>
+            <td>
+              <span [class]="'severity ' + issue.severity"
+                >{{ issue.severity }}</span
+              >
+            </td>
+            <th scope="row">
+              <strong>{{ issue.title }}</strong><small>{{ issue.type }}</small>
+            </th>
+            <td>{{ issue.location?.label ?? 'Unassigned' }}</td>
+            <td>{{ issue.occurredAt | date: 'MMM d, HH:mm' }}</td>
+            <td>
+              @if (issue.quantity !== undefined) { {{ quantity(issue.quantity)
+              }} available } @else if (issue.ageMinutes !== undefined) { {{
+              duration(issue.ageMinutes) }} } @else { — }
+            </td>
+            <td>
+              <button type="button" (click)="openIssue(issue, $event)">
+                Inspect
+              </button>
+            </td>
+          </tr>
+          } @empty {
+          <tr>
+            <td colspan="6">
+              <aad-state-panel
+                kind="empty"
+                title="No matching issues"
+                message="No operational exceptions match this date, location, type, and severity scope."
+                [compact]="true"
+              />
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <footer class="pagination">
+      <button
+        type="button"
+        [disabled]="!hasPreviousPage()"
+        (click)="previousPage()"
+      >
+        Previous
+      </button>
+      <span>Up to {{ issues()?.pageInfo.pageSize ?? 25 }} issues per page</span>
+      <button
+        type="button"
+        [disabled]="!issues()?.pageInfo.hasNextPage"
+        (click)="nextPage()"
+      >
+        Next
+      </button>
+    </footer>
+  </section>
+  }
+</article>
+
+<aad-dialog
+  [open]="!!selectedIssue()"
+  labelledBy="issue-dialog-title"
+  describedBy="issue-dialog-description"
+  (dismissed)="closeIssue()"
+>
+  @if (selectedIssue(); as issue) {
+  <article class="issue-dialog">
+    <header>
+      <div>
+        <span [class]="'severity ' + issue.severity">{{ issue.severity }}</span>
+        <h2 id="issue-dialog-title">{{ issue.title }}</h2>
+      </div>
+      <button
+        type="button"
+        aria-label="Close issue details"
+        (click)="closeIssue()"
+      >
+        ×
+      </button>
+    </header>
+    <p id="issue-dialog-description">{{ issue.detail }}</p>
+    <dl>
+      <div>
+        <dt>Issue type</dt>
+        <dd>{{ issue.type }}</dd>
+      </div>
+      <div>
+        <dt>Location</dt>
+        <dd>{{ issue.location?.label ?? 'Unassigned' }}</dd>
+      </div>
+      <div>
+        <dt>Observed</dt>
+        <dd>{{ issue.occurredAt | date: 'medium' }}</dd>
+      </div>
+      @if (issue.ageMinutes !== undefined) {
+      <div>
+        <dt>Time exposure</dt>
+        <dd>{{ duration(issue.ageMinutes) }}</dd>
+      </div>
+      } @if (issue.quantity !== undefined) {
+      <div>
+        <dt>Available quantity</dt>
+        <dd>{{ quantity(issue.quantity) }}</dd>
+      </div>
+      }
+      <div>
+        <dt>Source reference</dt>
+        <dd class="reference">{{ issue.entityId }}</dd>
+      </div>
+    </dl>
+    <footer>
+      <button class="ui-button secondary" type="button" (click)="closeIssue()">
+        Close
+      </button>
+    </footer>
+  </article>
+  }
+</aad-dialog>
+
+<aad-dialog
+  [open]="settingsOpen()"
+  labelledBy="settings-title"
+  describedBy="settings-description"
+  (dismissed)="settingsOpen.set(false)"
+>
+  <form
+    class="settings-form"
+    [formGroup]="settings"
+    (ngSubmit)="saveSettings()"
+    novalidate
+  >
+    <header>
+      <div>
+        <p class="section-kicker">Organization policy</p>
+        <h2 id="settings-title">Operational thresholds</h2>
+        <p id="settings-description">
+          Set explicit alert, cutoff, and freshness rules. Changes are audited.
+        </p>
+      </div>
+      <button
+        type="button"
+        aria-label="Close threshold settings"
+        (click)="settingsOpen.set(false)"
+      >
+        ×
+      </button>
+    </header>
+    <div class="settings-grid">
+      <label
+        ><span>Policy timezone</span
+        ><input
+          formControlName="timezone"
+          autocomplete="off"
+          placeholder="America/New_York"
+        /><small>IANA name, such as UTC or Asia/Kolkata</small></label
+      >
+      <label
+        ><span>Daily cutoff</span
+        ><input type="time" formControlName="cutoffLocalTime" /><small
+          >Orders after this time roll forward one service day</small
+        ></label
+      >
+      <label
+        ><span>Ship target (minutes)</span
+        ><input
+          type="number"
+          formControlName="fulfilmentTargetMinutes"
+          min="60"
+          max="10080"
+      /></label>
+      <label
+        ><span>Backlog warning (minutes)</span
+        ><input
+          type="number"
+          formControlName="backlogWarningMinutes"
+          min="60"
+          max="43200"
+      /></label>
+      <label
+        ><span>Critical backlog (minutes)</span
+        ><input
+          type="number"
+          formControlName="backlogCriticalMinutes"
+          min="120"
+          max="86400"
+      /></label>
+      <label
+        ><span>Stale after (minutes)</span
+        ><input
+          type="number"
+          formControlName="dataStaleAfterMinutes"
+          min="15"
+          max="43200"
+      /></label>
+      <label
+        ><span>Cancellation warning (basis points)</span
+        ><input
+          type="number"
+          formControlName="cancellationWarningBasisPoints"
+          min="0"
+          max="10000"
+        /><small>1,000 basis points = 10%</small></label
+      >
+      <label
+        ><span>Return warning (basis points)</span
+        ><input
+          type="number"
+          formControlName="returnWarningBasisPoints"
+          min="0"
+          max="10000"
+      /></label>
+      <label
+        ><span>Low-stock buffer (units)</span
+        ><input
+          type="number"
+          formControlName="lowStockBufferQuantity"
+          min="0"
+          max="1000000000"
+      /></label>
+    </div>
+    @if (settings.touched && (settings.invalid ||
+    settings.controls.backlogCriticalMinutes.value <=
+    settings.controls.backlogWarningMinutes.value)) {
+    <aad-banner tone="error" title="Review threshold values"
+      >Use valid ranges and keep critical backlog age above warning
+      age.</aad-banner
+    >
+    }
+    <footer>
+      <button
+        class="ui-button secondary"
+        type="button"
+        (click)="settingsOpen.set(false)"
+      >
+        Cancel
+      </button>
+      <button class="ui-button" type="submit" [disabled]="savingSettings()">
+        {{ savingSettings() ? 'Saving…' : 'Save policy' }}
+      </button>
+    </footer>
+  </form>
+</aad-dialog>

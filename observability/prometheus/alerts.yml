@@ -1,0 +1,45 @@
+groups:
+  - name: analytics-admin-resilience
+    rules:
+      - alert: AnalyticsApiUnavailable
+        expr: up{job="analytics-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Analytics API metrics target is unavailable
+      - alert: AnalyticsApiErrorBudgetBurn
+        expr: >-
+          sum(rate(analytics_api_requests_total{status=~"5.."}[5m]))
+          / clamp_min(sum(rate(analytics_api_requests_total[5m])), 0.001) > 0.01
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: API five-minute error rate exceeds one percent
+      - alert: AnalyticsApiP95LatencyHigh
+        expr: >-
+          histogram_quantile(0.95,
+            sum by (le) (rate(analytics_api_request_duration_seconds_bucket[5m]))) > 0.75
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Representative API p95 latency exceeds 750 milliseconds
+      - alert: AnalyticsDatabasePoolSaturated
+        expr: >-
+          analytics_database_pool_connections{state="waiting"} > 0
+          and analytics_database_pool_connections{state="total"}
+          >= analytics_database_pool_connections{state="max"}
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Database pool has exhausted connections and is queueing work
+      - alert: AnalyticsDependencyCircuitOpen
+        expr: analytics_dependency_circuit_open == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: A required dependency circuit is open

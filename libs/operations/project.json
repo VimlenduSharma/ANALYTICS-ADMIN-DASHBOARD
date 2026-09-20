@@ -1,0 +1,32 @@
+{
+  "name": "operations",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/operations/src",
+  "projectType": "library",
+  "tags": ["scope:server", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/operations",
+        "main": "libs/operations/src/index.ts",
+        "tsConfig": "libs/operations/tsconfig.lib.json"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p libs/operations/tsconfig.lib.json"
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/libs/operations"],
+      "options": {
+        "jestConfig": "libs/operations/jest.config.cts",
+        "passWithNoTests": false
+      }
+    }
+  }
+}

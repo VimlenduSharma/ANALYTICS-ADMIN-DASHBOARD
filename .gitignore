@@ -1,0 +1,43 @@
+# Dependencies and generated output
+node_modules/
+dist/
+coverage/
+.angular/
+.nx/
+.pnpm-store/
+tmp/
+
+# Local environment files and credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.tfstate
+*.tfstate.*
+secrets/
+
+# Private working notes (never commit)
+.private/
+docs/PROJECT_PLAN.md
+docs/DESIGN_STANDARDS.md
+docs/PRE_RELEASE_WEB_STANDARDS.md
+docs/phases/
+
+# Test and browser artifacts
+playwright-report/
+test-results/
+blob-report/
+
+# Logs and local tooling
+*.log
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json

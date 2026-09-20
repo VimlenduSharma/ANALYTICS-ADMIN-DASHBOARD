@@ -1,0 +1,172 @@
+.sign-in-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 420px);
+  align-items: center;
+  gap: clamp(40px, 7vw, 90px);
+  width: min(1080px, 100%);
+  min-height: calc(100vh - 74px);
+  margin: 0 auto;
+  padding: 60px clamp(24px, 5vw, 72px);
+}
+
+.eyebrow,
+.card-kicker {
+  margin: 0;
+  color: var(--accent-strong);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  display: block;
+}
+h1 {
+  margin: 18px 0;
+  font-size: clamp(2.6rem, 5vw, 4.6rem);
+  font-weight: 650;
+  line-height: 1.04;
+  letter-spacing: -0.055em;
+}
+
+.intro {
+  max-width: 630px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: clamp(1rem, 1.8vw, 1.16rem);
+  line-height: 1.7;
+}
+
+.sign-in-card {
+  padding: clamp(26px, 4vw, 38px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.sign-in-card h2 {
+  margin: 9px 0;
+  font-size: 1.65rem;
+  letter-spacing: -0.045em;
+}
+.card-copy,
+.privacy-note {
+  color: var(--text-muted);
+}
+.card-copy {
+  margin: 0 0 28px;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+.privacy-note {
+  margin: 20px 0 0;
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.message {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin: 12px 0;
+  padding: 13px;
+  border-radius: 11px;
+  background: var(--surface-muted);
+}
+.message span {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: var(--border);
+  font-weight: 800;
+}
+.message p {
+  margin: 1px 0 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+.message.error {
+  background: var(--danger-soft);
+}
+.message.error span {
+  color: #fff;
+  background: var(--danger);
+}
+.message.success {
+  background: var(--accent-soft);
+}
+.message.success span {
+  color: var(--surface);
+  background: var(--success);
+}
+
+.spinner {
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.primary-action,
+.secondary-action {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 14px;
+  border-radius: 11px;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+}
+.primary-action {
+  border: 1px solid var(--text);
+  color: var(--surface);
+  background: var(--text);
+}
+.primary-action:hover:not(:disabled) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+.primary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.secondary-action {
+  border: 1px solid var(--border);
+  color: var(--text);
+  background: var(--surface-raised);
+}
+
+@media (max-width: 860px) {
+  .sign-in-layout {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 38px;
+    padding-top: 24px;
+  }
+  .sign-in-card {
+    order: -1;
+  }
+  h1 {
+    font-size: clamp(2.5rem, 9vw, 4.5rem);
+  }
+  .sign-in-card {
+    width: min(560px, 100%);
+  }
+}
+
+@media (max-width: 560px) {
+  .sign-in-layout {
+    padding: 34px 18px;
+  }
+}

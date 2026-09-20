@@ -1,0 +1,200 @@
+<a class="skip-link" href="#main-content">Skip to content</a>
+
+<div class="app-shell" [class.is-authenticated]="session.user()">
+  <header class="topbar">
+    <a class="brand" routerLink="/" aria-label="Analytics Admin home">
+      <span class="brand-mark" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </span>
+      <span class="brand-copy">
+        <strong>Analytics Admin</strong>
+        <small>Operations intelligence</small>
+      </span>
+    </a>
+
+    @if (session.user()) {
+    <button
+      class="command-trigger"
+      type="button"
+      aria-keyshortcuts="Control+K Meta+K"
+      (click)="commandOpen.set(true)"
+    >
+      <span aria-hidden="true">⌕</span>
+      <span>Search or jump to</span>
+      <kbd>⌘ K</kbd>
+    </button>
+    }
+
+    <div class="topbar-actions">
+      @if (session.user(); as user) {
+      <a class="user-chip" routerLink="/profile" [title]="user.email">
+        <span>{{ user.displayName.slice(0, 1).toUpperCase() }}</span>
+        {{ user.displayName }}
+      </a>
+      <button class="quiet-button sign-out" type="button" (click)="signOut()">
+        Sign out
+      </button>
+      }
+      <button
+        class="quiet-button theme-button"
+        type="button"
+        (click)="theme.toggle()"
+        [attr.aria-label]="'Switch to ' + (theme.theme() === 'light' ? 'dark' : 'light') + ' theme'"
+      >
+        {{ theme.theme() === 'light' ? 'Dark' : 'Light' }} mode
+      </button>
+    </div>
+  </header>
+
+  @if (session.user()) {
+  <aad-workspace-filter-bar
+    [organizations]="session.organizations()"
+    [selectedOrganizationId]="filters.organizationId()"
+    (organizationSelected)="selectOrganization($event)"
+    (dateSelected)="selectDatePreset($event)"
+  />
+  }
+
+  <div class="workspace" [class.with-sidebar]="session.user()">
+    @if (session.user()) {
+    <aside class="sidebar">
+      <div>
+        <p class="nav-label">Workspace</p>
+        <nav aria-label="Primary navigation">
+          <a
+            routerLink="/"
+            routerLinkActive="is-active"
+            [routerLinkActiveOptions]="{ exact: true }"
+          >
+            <span class="nav-symbol" aria-hidden="true">⌁</span>
+            <span>Overview</span>
+          </a>
+          @if (selectedSalesPath(); as salesPath) {
+          <a [routerLink]="salesPath" routerLinkActive="is-active">
+            <span class="nav-symbol" aria-hidden="true">↗</span>
+            <span>Sales</span>
+          </a>
+          } @if (selectedOperationsPath(); as operationsPath) {
+          <a [routerLink]="operationsPath" routerLinkActive="is-active">
+            <span class="nav-symbol" aria-hidden="true">◫</span>
+            <span>Operations</span>
+          </a>
+          } @if (selectedTeamPath(); as teamPath) {
+          <a [routerLink]="teamPath" routerLinkActive="is-active">
+            <span class="nav-symbol" aria-hidden="true">◎</span>
+            <span>Team access</span>
+          </a>
+          } @if (selectedGovernancePath(); as governancePath) {
+          <a [routerLink]="governancePath" routerLinkActive="is-active">
+            <span class="nav-symbol" aria-hidden="true">⌾</span>
+            <span>Governance</span>
+          </a>
+          }
+          <a routerLink="/workspace/components" routerLinkActive="is-active">
+            <span class="nav-symbol" aria-hidden="true">◇</span>
+            <span>Interface patterns</span>
+          </a>
+        </nav>
+      </div>
+
+      <div class="sidebar-footer">
+        <button type="button" (click)="preferencesOpen.set(true)">
+          <span aria-hidden="true">◐</span>
+          Appearance
+        </button>
+      </div>
+    </aside>
+    }
+
+    <main id="main-content" tabindex="-1">
+      <router-outlet />
+    </main>
+  </div>
+
+  @if (session.user()) {
+  <nav class="mobile-navigation" aria-label="Mobile navigation">
+    <a
+      routerLink="/"
+      routerLinkActive="is-active"
+      [routerLinkActiveOptions]="{ exact: true }"
+    >
+      Overview
+    </a>
+    @if (selectedSalesPath(); as salesPath) {
+    <a [routerLink]="salesPath" routerLinkActive="is-active"> Sales </a>
+    } @if (selectedOperationsPath(); as operationsPath) {
+    <a [routerLink]="operationsPath" routerLinkActive="is-active">
+      Operations
+    </a>
+    }
+    <button type="button" (click)="commandOpen.set(true)">Search</button>
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      [attr.aria-expanded]="mobileMenuOpen()"
+      [class.is-active]="mobileMenuOpen() || moreSelected()"
+      (click)="mobileMenuOpen.set(true)"
+    >
+      More
+    </button>
+  </nav>
+
+  <aad-dialog
+    [open]="mobileMenuOpen()"
+    labelledBy="mobile-menu-title"
+    (dismissed)="mobileMenuOpen.set(false)"
+  >
+    <div class="mobile-menu-panel">
+      <header>
+        <h2 id="mobile-menu-title">More destinations</h2>
+        <button type="button" (click)="mobileMenuOpen.set(false)">Close</button>
+      </header>
+      <nav aria-label="More workspace destinations">
+        @if (selectedTeamPath(); as teamPath) {
+        <a [routerLink]="teamPath" (click)="mobileMenuOpen.set(false)"
+          >Team access</a
+        >
+        } @if (selectedGovernancePath(); as governancePath) {
+        <a [routerLink]="governancePath" (click)="mobileMenuOpen.set(false)"
+          >Governance</a
+        >
+        }
+        <a
+          routerLink="/workspace/components"
+          (click)="mobileMenuOpen.set(false)"
+          >Interface patterns</a
+        >
+        <a routerLink="/profile" (click)="mobileMenuOpen.set(false)">Profile</a>
+        <button type="button" (click)="openAppearanceFromMenu()">
+          Appearance
+        </button>
+      </nav>
+    </div>
+  </aad-dialog>
+
+  <aad-command-menu
+    [open]="commandOpen()"
+    [organizations]="session.organizations()"
+    [selectedOrganizationId]="filters.organizationId()"
+    [canManageSelected]="canManageSelected()"
+    (dismissed)="commandOpen.set(false)"
+    (organizationSelected)="selectOrganization($event)"
+  />
+
+  <aad-dialog
+    [open]="preferencesOpen()"
+    labelledBy="preferences-title"
+    describedBy="preferences-description"
+    (dismissed)="preferencesOpen.set(false)"
+  >
+    <aad-appearance-preferences
+      headingId="preferences-title"
+      descriptionId="preferences-description"
+      groupName="workspace-preferences"
+      (closed)="preferencesOpen.set(false)"
+    />
+  </aad-dialog>
+  }
+
+  <aad-toast-region />
+</div>

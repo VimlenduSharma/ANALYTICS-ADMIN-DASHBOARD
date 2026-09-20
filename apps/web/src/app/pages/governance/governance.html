@@ -1,0 +1,544 @@
+<article class="governance-page">
+  <header class="page-header">
+    <div>
+      <a routerLink="/" class="back-link">← Workspace</a>
+      <p class="eyebrow"><span></span> Control plane</p>
+      <h1>Governance, without blind spots.</h1>
+      <p class="page-intro">
+        Administer access, connected data, retention, and privacy workflows from
+        one accountable surface. Every sensitive change leaves an audit trail.
+      </p>
+    </div>
+    @if (organization(); as access) {
+    <span class="role-badge">{{ access.name }} · {{ access.role }}</span>
+    }
+  </header>
+
+  @if (data.actionError(); as message) {
+  <aad-banner
+    title="Change not applied"
+    tone="error"
+    [dismissible]="true"
+    (dismissed)="data.actionError.set(undefined)"
+    >{{ message }}</aad-banner
+  >
+  } @if (data.state(); as state) { @switch (state.kind) { @case ('loading') {
+  <aad-state-panel
+    kind="loading"
+    title="Loading governance controls"
+    message="Resolving policies, integrations, and durable workflow state."
+  />
+  } @case ('error') {
+  <aad-state-panel
+    kind="error"
+    title="Governance is unavailable"
+    [message]="state.message"
+    actionLabel="Try again"
+    (action)="load()"
+  />
+  } @case ('ready') {
+  <section class="assurance-strip" aria-label="Governance summary">
+    <div>
+      <span>Connected sources</span>
+      <strong>{{ state.overview.sources.length }}</strong>
+      <small>Tenant-scoped ingestion boundaries</small>
+    </div>
+    <div>
+      <span>Pending invitations</span>
+      <strong>
+        {{ state.overview.invitations.filter(statusIsPending).length }}
+      </strong>
+      <small>Expire automatically after seven days</small>
+    </div>
+    <div>
+      <span>Durable workflows</span>
+      <strong>{{ state.overview.jobs.length }}</strong>
+      <small>Resumable, idempotent execution</small>
+    </div>
+    <div class="assurance">
+      <span>Credential storage</span>
+      <strong>AES-256-GCM</strong>
+      <small>Secrets are shown only at creation or rotation</small>
+    </div>
+  </section>
+
+  <section class="control-grid">
+    <article class="panel sources-panel" aria-labelledby="sources-title">
+      <header class="panel-header">
+        <div>
+          <p class="section-kicker">Data source management</p>
+          <h2 id="sources-title">Connected data</h2>
+        </div>
+        <span>{{ state.overview.sources.length }} boundaries</span>
+      </header>
+
+      <div class="source-list">
+        @for (source of state.overview.sources; track source.id) {
+        <article class="source-card">
+          <span
+            class="source-mark"
+            [class.waiting]="source.status === 'waiting'"
+            [class.revoked]="source.status === 'revoked'"
+            aria-hidden="true"
+          ></span>
+          <div>
+            <div class="source-title">
+              <strong>{{ source.name }}</strong>
+              <span [class]="'status ' + source.status">
+                {{ source.status }}
+              </span>
+            </div>
+            <p>
+              {{ source.eventCount }} accepted events · @if
+              (source.lastReceivedAt) { Last received {{ source.lastReceivedAt |
+              date: 'medium' }} } @else { Waiting for first valid record }
+            </p>
+            @if (source.credentialRotatedAt) {
+            <small>
+              Credential rotated {{ source.credentialRotatedAt | date: 'medium'
+              }}
+            </small>
+            }
+          </div>
+          @if (source.kind === 'orders-webhook' && source.status === 'active') {
+          <div class="row-actions">
+            <button
+              type="button"
+              (click)="rotate(source)"
+              [disabled]="saving() === source.id"
+            >
+              Rotate secret
+            </button>
+            <button
+              class="danger-link"
+              type="button"
+              (click)="revokeSource(source)"
+              [disabled]="saving() === source.id"
+            >
+              Revoke
+            </button>
+          </div>
+          }
+        </article>
+        }
+      </div>
+
+      <form
+        class="inline-form"
+        [formGroup]="webhookForm"
+        (ngSubmit)="createWebhook()"
+        novalidate
+      >
+        <aad-field
+          [control]="webhookForm.controls.name"
+          fieldId="webhook-name"
+          label="New orders webhook"
+          placeholder="Production commerce feed"
+          hint="Use a name your on-call team will recognize."
+          [maxLength]="120"
+          [required]="true"
+        />
+        <button
+          class="ui-button"
+          type="submit"
+          [disabled]="saving() === 'webhook'"
+        >
+          Create source
+        </button>
+      </form>
+    </article>
+
+    <article class="panel invitations-panel" aria-labelledby="invite-title">
+      <header class="panel-header">
+        <div>
+          <p class="section-kicker">Identity governance</p>
+          <h2 id="invite-title">Invite a member</h2>
+        </div>
+        <a [routerLink]="'/organizations/' + organizationId + '/team'">
+          Manage roles →
+        </a>
+      </header>
+      <form
+        class="invite-form"
+        [formGroup]="invitationForm"
+        (ngSubmit)="invite()"
+        novalidate
+      >
+        <aad-field
+          [control]="invitationForm.controls.email"
+          fieldId="invitation-email"
+          label="Work email"
+          type="email"
+          autocomplete="email"
+          placeholder="name@company.com"
+          errorText="Enter a valid work email."
+          [maxLength]="320"
+          [required]="true"
+        />
+        <div class="select-field">
+          <label for="invitation-role">Starting role</label>
+          <select id="invitation-role" formControlName="role">
+            @for (role of invitationRoles(); track role) {
+            <option [value]="role">{{ role }}</option>
+            }
+          </select>
+        </div>
+        <button
+          class="ui-button"
+          type="submit"
+          [disabled]="saving() === 'invitation'"
+        >
+          Create invitation
+        </button>
+      </form>
+
+      <div class="invitation-list" aria-label="Recent invitations">
+        @for (invitation of state.overview.invitations; track invitation.id) {
+        <div>
+          <span class="avatar" aria-hidden="true">
+            {{ invitation.email.slice(0, 1).toUpperCase() }}
+          </span>
+          <p>
+            <strong>{{ invitation.email }}</strong>
+            <small>
+              {{ invitation.role }} · {{ invitation.status }} · expires {{
+              invitation.expiresAt | date: 'mediumDate' }}
+            </small>
+          </p>
+          @if (invitation.status === 'pending') {
+          <button
+            type="button"
+            (click)="revokeInvitation(invitation.id)"
+            [disabled]="saving() === invitation.id"
+          >
+            Revoke
+          </button>
+          }
+        </div>
+        } @empty {
+        <p class="empty-copy">No invitations have been issued.</p>
+        }
+      </div>
+    </article>
+  </section>
+
+  <section class="policy-grid">
+    <article class="panel" aria-labelledby="policy-title">
+      <header class="panel-header">
+        <div>
+          <p class="section-kicker">Organization policy</p>
+          <h2 id="policy-title">Retention & reporting</h2>
+        </div>
+        @if (!isOwner()) {
+        <span>Owner managed</span>
+        }
+      </header>
+      <form
+        class="policy-form"
+        [formGroup]="policyForm"
+        (ngSubmit)="savePolicy()"
+        novalidate
+      >
+        <label>
+          Organization name
+          <input formControlName="name" autocomplete="organization" />
+        </label>
+        <label>
+          Reporting timezone
+          <input formControlName="reportingTimezone" placeholder="UTC" />
+        </label>
+        <label>
+          Week starts on
+          <select formControlName="weekStartsOn">
+            <option [ngValue]="1">Monday</option>
+            <option [ngValue]="0">Sunday</option>
+            <option [ngValue]="6">Saturday</option>
+          </select>
+        </label>
+        <label>
+          Operational retention (days)
+          <input type="number" formControlName="operationalDataRetentionDays" />
+        </label>
+        <label>
+          Audit retention (days)
+          <input type="number" formControlName="auditRetentionDays" />
+        </label>
+        <label>
+          Export retention (hours)
+          <input type="number" formControlName="exportRetentionHours" />
+        </label>
+        <label>
+          Privacy download window (hours)
+          <input type="number" formControlName="privacyExportRetentionHours" />
+        </label>
+        <button
+          class="ui-button"
+          type="submit"
+          [disabled]="!isOwner() || saving() === 'policy'"
+        >
+          Save policy
+        </button>
+      </form>
+    </article>
+
+    <article class="panel privacy-panel" aria-labelledby="privacy-title">
+      <header class="panel-header">
+        <div>
+          <p class="section-kicker">Privacy operations</p>
+          <h2 id="privacy-title">Export or delete a subject</h2>
+        </div>
+        <span>Owner only</span>
+      </header>
+      <p class="panel-copy">
+        Customer references are resolved inside this organization. Export
+        artifacts remain encrypted; deletion preserves de-identified financial
+        facts.
+      </p>
+      <form [formGroup]="privacyForm" class="privacy-form" novalidate>
+        <aad-field
+          [control]="privacyForm.controls.customerReference"
+          fieldId="customer-reference"
+          label="Customer external reference"
+          placeholder="customer-10482"
+          hint="Use the identifier supplied by the connected commerce system."
+          [maxLength]="160"
+          [required]="true"
+        />
+        <div>
+          <button
+            class="ui-button secondary"
+            type="button"
+            (click)="queuePrivacy('privacy-export')"
+            [disabled]="!isOwner() || saving() === 'privacy-export'"
+          >
+            Prepare export
+          </button>
+          <button
+            class="ui-button danger"
+            type="button"
+            (click)="queuePrivacy('privacy-delete')"
+            [disabled]="!isOwner() || saving() === 'privacy-delete'"
+          >
+            Queue deletion
+          </button>
+        </div>
+      </form>
+      <div class="retention-run">
+        <div>
+          <strong>Apply retention now</strong>
+          <p>Processes eligible records in bounded, resumable batches.</p>
+        </div>
+        <button
+          type="button"
+          (click)="runRetention()"
+          [disabled]="!isOwner() || saving() === 'retention'"
+        >
+          Run policy
+        </button>
+      </div>
+    </article>
+  </section>
+
+  <section class="panel jobs-panel" aria-labelledby="jobs-title">
+    <header class="panel-header">
+      <div>
+        <p class="section-kicker">Durable execution</p>
+        <h2 id="jobs-title">Privacy & retention jobs</h2>
+      </div>
+      <button type="button" (click)="load()">Refresh</button>
+    </header>
+    <div
+      class="table-wrap"
+      role="region"
+      aria-label="Privacy and retention job history"
+      tabindex="0"
+    >
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Workflow</th>
+            <th scope="col">Subject</th>
+            <th scope="col">Status</th>
+            <th scope="col">Processed</th>
+            <th scope="col">Requested</th>
+            <th scope="col"><span class="sr-only">Download</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (job of state.overview.jobs; track job.id) {
+          <tr>
+            <td><strong>{{ statusLabel(job.type) }}</strong></td>
+            <td>{{ job.subjectExternalId || 'Organization policy' }}</td>
+            <td>
+              <span [class]="'status ' + job.status"> {{ job.status }} </span>
+            </td>
+            <td>{{ job.processedCount }}</td>
+            <td>
+              {{ job.requestedByDisplayName }} · {{ job.createdAt | date:
+              'short' }}
+            </td>
+            <td>
+              @if (job.downloadReady) {
+              <a
+                class="download-link"
+                [href]="
+                            '/api/v1/organizations/' +
+                            organizationId +
+                            '/governance/jobs/' +
+                            job.id +
+                            '/download'
+                          "
+                >Download</a
+              >
+              }
+            </td>
+          </tr>
+          } @empty {
+          <tr>
+            <td colspan="6" class="table-empty">
+              No governance workflows have been requested.
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel audit-panel" aria-labelledby="audit-title">
+    <header class="panel-header audit-heading">
+      <div>
+        <p class="section-kicker">Accountability</p>
+        <h2 id="audit-title">Audit-log explorer</h2>
+      </div>
+      <form
+        [formGroup]="auditForm"
+        (ngSubmit)="applyAuditFilters()"
+        class="audit-filters"
+      >
+        <label>
+          <span class="sr-only">Event type</span>
+          <input formControlName="eventType" placeholder="Event type" />
+        </label>
+        <label>
+          <span class="sr-only">From date</span>
+          <input type="date" formControlName="from" />
+        </label>
+        <label>
+          <span class="sr-only">To date</span>
+          <input type="date" formControlName="to" />
+        </label>
+        <button type="submit">Apply</button>
+        <button type="button" (click)="clearAuditFilters()">Clear</button>
+      </form>
+    </header>
+    <ol class="audit-list">
+      @for (event of state.audit.items; track event.id) {
+      <li>
+        <span class="audit-dot" aria-hidden="true"></span>
+        <div>
+          <strong>{{ event.eventType }}</strong>
+          <p>
+            {{ event.actorDisplayName || 'System' }} · {{ event.createdAt |
+            date: 'medium' }}
+          </p>
+        </div>
+        <code>{{ event.targetType || 'organization' }}</code>
+      </li>
+      } @empty {
+      <li class="empty-copy">No events match these filters.</li>
+      }
+    </ol>
+  </section>
+  } } } @if (credential(); as value) {
+  <aad-dialog
+    [open]="true"
+    labelledBy="credential-title"
+    describedBy="credential-description"
+    (dismissed)="credential.set(undefined)"
+  >
+    <div class="secret-dialog">
+      <p class="section-kicker">One-time credential</p>
+      <h2 id="credential-title">Copy this signing secret now</h2>
+      <p id="credential-description">
+        Analytics Admin encrypts this value at rest and will never return it
+        again. Store it in your deployment secret manager.
+      </p>
+      <label>
+        Signing secret
+        <textarea readonly [value]="value.secret" rows="3"></textarea>
+      </label>
+      <label>
+        Webhook path
+        <input readonly [value]="value.path" />
+      </label>
+      <button
+        class="ui-button"
+        type="button"
+        (click)="credential.set(undefined)"
+      >
+        I stored the secret
+      </button>
+    </div>
+  </aad-dialog>
+  } @if (invitationPath(); as path) {
+  <aad-dialog
+    [open]="true"
+    labelledBy="invitation-path-title"
+    describedBy="invitation-path-description"
+    (dismissed)="invitationPath.set(undefined)"
+  >
+    <div class="secret-dialog">
+      <p class="section-kicker">Invitation ready</p>
+      <h2 id="invitation-path-title">Share the acceptance link securely</h2>
+      <p id="invitation-path-description">
+        Only the invited signed-in email can accept it. The token is stored as a
+        one-way digest and expires in seven days.
+      </p>
+      <label>
+        Acceptance link
+        <textarea readonly [value]="path" rows="3"></textarea>
+      </label>
+      <button
+        class="ui-button"
+        type="button"
+        (click)="invitationPath.set(undefined)"
+      >
+        Done
+      </button>
+    </div>
+  </aad-dialog>
+  } @if (deletionPending()) {
+  <aad-dialog
+    [open]="true"
+    labelledBy="deletion-title"
+    describedBy="deletion-description"
+    (dismissed)="deletionPending.set(false)"
+  >
+    <div class="secret-dialog confirm-delete">
+      <p class="section-kicker">Irreversible privacy action</p>
+      <h2 id="deletion-title">Queue customer deletion?</h2>
+      <p id="deletion-description">
+        Personal references and order metadata will be removed. Aggregated
+        financial facts remain de-identified for reporting integrity.
+      </p>
+      <div>
+        <button
+          class="ui-button secondary"
+          type="button"
+          (click)="deletionPending.set(false)"
+        >
+          Cancel
+        </button>
+        <button
+          class="ui-button danger"
+          type="button"
+          (click)="confirmDeletion()"
+        >
+          Queue deletion
+        </button>
+      </div>
+    </div>
+  </aad-dialog>
+  }
+</article>

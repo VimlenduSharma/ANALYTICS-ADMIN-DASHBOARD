@@ -1,0 +1,74 @@
+<article class="profile-page">
+  <header>
+    <a routerLink="/" class="back-link">← Workspace</a>
+    <p class="eyebrow"><span></span> Personal settings</p>
+    <h1>Make the workspace feel local.</h1>
+    <p>
+      Keep your identity and regional display preferences accurate. These values
+      are private to your account and never stored in browser persistence.
+    </p>
+  </header>
+
+  @if (loading()) {
+  <aad-state-panel
+    kind="loading"
+    title="Loading your profile"
+    message="Resolving secure account preferences."
+  />
+  } @else if (error(); as message) {
+  <aad-state-panel
+    kind="error"
+    title="Profile unavailable"
+    [message]="message"
+    actionLabel="Try again"
+    (action)="load()"
+  />
+  } @else {
+  <section class="profile-card">
+    <div class="identity-card">
+      <span aria-hidden="true">
+        {{ form.controls.displayName.value.slice(0, 1).toUpperCase() }}
+      </span>
+      <div>
+        <p>Signed-in identity</p>
+        <a [href]="'mailto:' + email()">{{ email() }}</a>
+        <small>Email changes are managed by your identity provider.</small>
+      </div>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <aad-field
+        [control]="form.controls.displayName"
+        fieldId="profile-name"
+        label="Display name"
+        autocomplete="name"
+        placeholder="Your full name"
+        errorText="Enter a display name."
+        [maxLength]="120"
+        [required]="true"
+      />
+      <aad-field
+        [control]="form.controls.timezone"
+        fieldId="profile-timezone"
+        label="Timezone"
+        placeholder="Asia/Kolkata"
+        hint="Use an IANA timezone such as Europe/London or America/New_York."
+        [maxLength]="80"
+        [required]="true"
+      />
+      <aad-field
+        [control]="form.controls.locale"
+        fieldId="profile-locale"
+        label="Locale"
+        placeholder="en-IN"
+        hint="A language-region tag used for dates and numbers."
+        [maxLength]="20"
+        [required]="true"
+      />
+      <button class="ui-button" type="submit" [disabled]="saving()">
+        Save profile
+      </button>
+    </form>
+  </section>
+  }
+</article>

@@ -1,0 +1,27 @@
+FROM node:24.19.0-bookworm-slim AS build
+
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+WORKDIR /workspace
+
+RUN corepack enable && corepack prepare pnpm@11.19.0 --activate
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml nx.json tsconfig.base.json ./
+COPY apps/web ./apps/web
+COPY libs/contracts ./libs/contracts
+COPY tools/run-nx.mjs ./tools/run-nx.mjs
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+  pnpm install --frozen-lockfile \
+  && pnpm nx build web --configuration=production
+
+FROM nginx:1.29.4-alpine
+
+COPY deploy/nginx.conf /etc/nginx/nginx.conf
+COPY --from=build /workspace/dist/apps/web/browser /usr/share/nginx/html
+RUN mkdir -p /tmp/nginx/client_temp /tmp/nginx/fastcgi_temp \
+    /tmp/nginx/proxy_temp /tmp/nginx/scgi_temp /tmp/nginx/uwsgi_temp \
+  && chown -R nginx:nginx /tmp/nginx /usr/share/nginx/html
+
+USER nginx
+EXPOSE 8080
+HEALTHCHECK --interval=15s --timeout=3s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1

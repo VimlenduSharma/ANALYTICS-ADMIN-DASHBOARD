@@ -1,0 +1,201 @@
+<article class="catalog-page">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Living interface reference</p>
+      <h1>One language for every state.</h1>
+      <p>
+        These production components document the same interactions used by the
+        application. Their semantics, spacing, and recovery actions stay
+        centralized.
+      </p>
+    </div>
+    <dl aria-label="Component reference summary">
+      <div>
+        <dt>Primitives</dt>
+        <dd>6</dd>
+      </div>
+      <div>
+        <dt>States</dt>
+        <dd>6</dd>
+      </div>
+      <div>
+        <dt>Storage</dt>
+        <dd>Allowlisted</dd>
+      </div>
+    </dl>
+  </header>
+
+  <section class="catalog-section" aria-labelledby="feedback-title">
+    <div class="section-heading">
+      <div>
+        <span>01</span>
+        <h2 id="feedback-title">Feedback patterns</h2>
+      </div>
+      <p>
+        Persistent banners explain context; toasts confirm short-lived outcomes.
+      </p>
+    </div>
+    <div class="banner-grid">
+      <aad-banner title="Connected" tone="success">
+        The current workspace can reach its required services.
+      </aad-banner>
+      <aad-banner title="Review required" tone="warning">
+        A recoverable condition needs attention before work continues.
+      </aad-banner>
+      <aad-banner title="Context note" tone="info">
+        Informational messages do not interrupt the current task.
+      </aad-banner>
+      <aad-banner title="Action failed" tone="error">
+        Errors name a safe recovery path without exposing internal details.
+      </aad-banner>
+    </div>
+  </section>
+
+  <section class="catalog-section" aria-labelledby="states-title">
+    <div class="section-heading">
+      <div>
+        <span>02</span>
+        <h2 id="states-title">Complete state model</h2>
+      </div>
+      <p>
+        Every data view reserves an explicit path for uncertainty and recovery.
+      </p>
+    </div>
+    <div class="state-grid">
+      <aad-state-panel
+        kind="loading"
+        title="Loading"
+        message="Content is being requested."
+        [compact]="true"
+      />
+      <aad-state-panel
+        kind="empty"
+        title="Empty"
+        message="There is no content in the current scope."
+        [compact]="true"
+      />
+      <aad-state-panel
+        kind="stale"
+        title="Stale"
+        message="Visible content is older than the accepted threshold."
+        [compact]="true"
+      />
+      <aad-state-panel
+        kind="partial"
+        title="Partial"
+        message="Some sources responded while others remain unavailable."
+        [compact]="true"
+      />
+      <aad-state-panel
+        kind="error"
+        title="Error"
+        message="The request failed safely and can be retried."
+        actionLabel="Try again"
+        [compact]="true"
+      />
+      <aad-state-panel
+        kind="success"
+        title="Success"
+        message="The latest request completed successfully."
+        [compact]="true"
+      />
+    </div>
+  </section>
+
+  <section
+    class="catalog-section interaction-grid"
+    aria-labelledby="interaction-title"
+  >
+    <div class="section-heading">
+      <div>
+        <span>03</span>
+        <h2 id="interaction-title">Form and overlays</h2>
+      </div>
+      <p>
+        Labels, descriptions, focus management, validation, and announcements
+        are built in.
+      </p>
+    </div>
+    <div class="example-card">
+      <aad-field
+        [control]="email"
+        fieldId="catalog-email"
+        label="Work email"
+        type="email"
+        autocomplete="email"
+        placeholder="name@company.com"
+        hint="Validation appears after the field is touched."
+        errorText="Enter a valid work email address."
+        [required]="true"
+      />
+      <div class="button-row">
+        <button class="ui-button" type="button" (click)="validateField()">
+          Validate field
+        </button>
+        <button
+          class="ui-button secondary"
+          type="button"
+          (click)="dialogOpen.set(true)"
+        >
+          Open dialog
+        </button>
+        <button class="ui-button secondary" type="button" (click)="showToast()">
+          Show toast
+        </button>
+      </div>
+    </div>
+
+    <aside class="contract-card" aria-label="Interaction contract">
+      <h3>Interaction contract</h3>
+      <ul>
+        <li>
+          <span>Keyboard</span
+          ><strong>Native order and Escape dismissal</strong>
+        </li>
+        <li>
+          <span>Screen reader</span
+          ><strong>Labels, live regions, and status roles</strong>
+        </li>
+        <li>
+          <span>Motion</span><strong>System-aware or explicitly reduced</strong>
+        </li>
+        <li>
+          <span>Privacy</span
+          ><strong>No account data in browser storage</strong>
+        </li>
+      </ul>
+    </aside>
+  </section>
+
+  <aad-dialog
+    [open]="dialogOpen()"
+    labelledBy="catalog-dialog-title"
+    describedBy="catalog-dialog-description"
+    (dismissed)="dialogOpen.set(false)"
+  >
+    <div class="example-dialog">
+      <p class="eyebrow">Accessible modal</p>
+      <h2 id="catalog-dialog-title">Confirm a focused decision</h2>
+      <p id="catalog-dialog-description">
+        The native dialog contains focus, supports Escape, and returns control
+        to the trigger.
+      </p>
+      <div class="button-row">
+        <button
+          class="ui-button secondary"
+          type="button"
+          (click)="dialogOpen.set(false)"
+        >
+          Cancel
+        </button>
+        <button
+          class="ui-button"
+          type="button"
+          (click)="dialogOpen.set(false); showToast()"
+        >
+          Confirm
+        </button>
+      </div>
+    </div>
+  </aad-dialog>
+</article>

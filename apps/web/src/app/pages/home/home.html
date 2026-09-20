@@ -1,0 +1,171 @@
+<article class="page">
+  <header class="page-heading" aria-labelledby="page-title">
+    <div>
+      <p class="eyebrow">Workspace</p>
+      <h1 id="page-title">Workspace overview</h1>
+      <p class="intro">
+        @if (selectedOrganization(); as organization) { Review sales,
+        operations, and access for {{ organization.name }}. } @else { Select an
+        organization to review its sales and operations. }
+      </p>
+      <div class="scope-summary" aria-label="Current workspace scope">
+        <span
+          ><small>Organization</small>{{ selectedOrganization()?.name || 'Not
+          selected' }}</span
+        >
+        <span><small>Date range</small>{{ dateLabel() }}</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="status-grid" aria-label="Workspace status">
+    <article class="card session-card">
+      <header class="card-header">
+        <div>
+          <p class="card-kicker">Access</p>
+          <h2>Your account</h2>
+        </div>
+        <span class="verified-badge"><i></i> Signed in</span>
+      </header>
+      <dl>
+        <div>
+          <dt>Signed in as</dt>
+          <dd>{{ session.user()?.email }}</dd>
+        </div>
+        <div>
+          <dt>Organizations</dt>
+          <dd>{{ session.organizations().length }}</dd>
+        </div>
+        @if (selectedOrganization(); as organization) {
+        <div>
+          <dt>Current role</dt>
+          <dd>{{ organization.role }}</dd>
+        </div>
+        }
+      </dl>
+      @if (selectedOrganization(); as organization) {
+      <nav class="work-links" aria-label="Explore the selected organization">
+        <a [routerLink]="['/organizations', organization.id, 'sales']"
+          >Review sales</a
+        >
+        <a [routerLink]="['/organizations', organization.id, 'operations']"
+          >Review operations</a
+        >
+      </nav>
+      }
+    </article>
+
+    <article class="card readiness-card">
+      <header class="card-header">
+        <div>
+          <p class="card-kicker">Service status</p>
+          <h2>Reporting services</h2>
+        </div>
+      </header>
+      @if (health.state(); as healthState) { @switch (healthState.kind) { @case
+      ('loading') {
+      <aad-state-panel
+        kind="loading"
+        title="Checking dependencies"
+        message="Waiting for PostgreSQL and Redis readiness."
+        [compact]="true"
+      />
+      } @case ('error') {
+      <aad-state-panel
+        kind="error"
+        title="Readiness unavailable"
+        [message]="healthState.message"
+        actionLabel="Try again"
+        [compact]="true"
+        (action)="health.refresh()"
+      />
+      } @case ('resolved') {
+      <aad-state-panel
+        [kind]="healthState.data.status === 'ok' ? 'success' : 'partial'"
+        [title]="healthState.data.status === 'ok' ? 'Services available' : 'Service degraded'"
+        [message]="healthState.data.status === 'ok'
+              ? 'The API and data services responded to the live check.'
+              : 'At least one required dependency needs attention before work continues.'"
+        actionLabel="Refresh"
+        [compact]="true"
+        (action)="health.refresh()"
+      />
+      } } }
+    </article>
+  </section>
+
+  <section class="organizations" aria-labelledby="organizations-title">
+    <header>
+      <div>
+        <p class="card-kicker">Access scope</p>
+        <h2 id="organizations-title">Your organizations</h2>
+      </div>
+      <p>Only organizations that granted you access appear here.</p>
+    </header>
+
+    @if (session.organizations().length) {
+    <div class="organization-grid">
+      @for (organization of session.organizations(); track organization.id) {
+      <article
+        [class.is-selected]="organization.id === selectedOrganization()?.id"
+      >
+        <div class="organization-meta">
+          <span>{{ organization.role }}</span>
+          @if (organization.id === selectedOrganization()?.id) {
+          <small>Current scope</small> }
+        </div>
+        <h3>{{ organization.name }}</h3>
+        <p>{{ organization.slug }}</p>
+        <div class="organization-actions">
+          <button
+            class="ui-button secondary"
+            type="button"
+            [disabled]="organization.id === selectedOrganization()?.id"
+            (click)="selectOrganization(organization.id)"
+          >
+            {{ organization.id === selectedOrganization()?.id ? 'Selected' :
+            'Use workspace' }}
+          </button>
+          @if (organization.role === 'OWNER' || organization.role === 'ADMIN') {
+          <a
+            class="ui-button"
+            [routerLink]="['/organizations', organization.id, 'team']"
+            >Manage team</a
+          >
+          }
+        </div>
+      </article>
+      }
+    </div>
+    } @else {
+    <div class="onboarding-card">
+      <div>
+        <h3>Create your first organization</h3>
+        <p>
+          Set up a workspace for the organization you are authorized to manage.
+        </p>
+      </div>
+      <form (submit)="createOrganization(); $event.preventDefault()" novalidate>
+        <aad-field
+          [control]="organizationName"
+          fieldId="organization-name"
+          label="Organization name"
+          autocomplete="organization"
+          hint="Use the name your team recognizes."
+          errorText="Use between 2 and 100 characters."
+          [maxLength]="100"
+          [required]="true"
+        />
+        @if (creationError(); as message) {
+        <aad-banner title="Workspace not created" tone="error"
+          >{{ message }}</aad-banner
+        >
+        }
+        <button class="ui-button" type="submit" [disabled]="creating()">
+          {{ creating() ? 'Creating…' : 'Create workspace' }}
+        </button>
+      </form>
+    </div>
+    }
+  </section>
+</article>

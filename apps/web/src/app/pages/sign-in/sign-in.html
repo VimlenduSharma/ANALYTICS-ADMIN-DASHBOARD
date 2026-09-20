@@ -1,0 +1,71 @@
+<section class="sign-in-layout" aria-labelledby="sign-in-title">
+  <div class="identity-story">
+    <p class="eyebrow">Analytics Admin</p>
+    <h1 id="sign-in-title">Sales and operations, in context.</h1>
+    <p class="intro">
+      Review performance, investigate exceptions, and manage access in one
+      private workspace. Sign in with your organization's account to continue.
+    </p>
+  </div>
+
+  <article class="sign-in-card">
+    <p class="card-kicker">Identity provider</p>
+    <h2>Sign in</h2>
+    <p class="card-copy">Use the account managed by your organization.</p>
+
+    @if (invitationRequiresSignIn()) {
+    <div class="message neutral" role="status">
+      <p>
+        Sign in with the invited email address, then reopen your invitation
+        link.
+      </p>
+    </div>
+    } @if (errorMessage(); as message) {
+    <div class="message error" role="alert">
+      <span aria-hidden="true">!</span>
+      <p>{{ message }}</p>
+    </div>
+    } @if (session.state(); as state) { @switch (state.kind) { @case ('loading')
+    {
+    <div class="message" role="status">
+      <span class="spinner" aria-hidden="true"></span>
+      <p>Checking your current session…</p>
+    </div>
+    } @case ('error') {
+    <div class="message error" role="alert">
+      <span aria-hidden="true">!</span>
+      <p>{{ state.message }}</p>
+    </div>
+    <button
+      class="secondary-action"
+      type="button"
+      (click)="session.ensureLoaded(true)"
+    >
+      Retry session check
+    </button>
+    } @case ('authenticated') {
+    <div class="message success" role="status">
+      <span aria-hidden="true">✓</span>
+      <p>You are signed in as {{ state.session.user.email }}.</p>
+    </div>
+    <a class="primary-action" routerLink="/">Open workspace</a>
+    } @case ('anonymous') { @if (state.loginAvailable) {
+    <a class="primary-action" [href]="loginUrl()">Sign in securely</a>
+    } @else {
+    <div class="message neutral" role="status">
+      <span aria-hidden="true">○</span>
+      <p>
+        An OpenID Connect provider has not been connected to this environment.
+      </p>
+    </div>
+    <button class="primary-action" type="button" disabled>
+      Sign-in unavailable
+    </button>
+    } } } }
+
+    <p class="privacy-note">
+      Passwords are entered only on your identity provider. Analytics Admin
+      never receives them.
+    </p>
+  </article>
+</section>

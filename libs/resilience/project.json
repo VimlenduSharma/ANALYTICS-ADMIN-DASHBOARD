@@ -1,0 +1,32 @@
+{
+  "name": "resilience",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/resilience/src",
+  "projectType": "library",
+  "tags": ["scope:server", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/resilience",
+        "main": "libs/resilience/src/index.ts",
+        "tsConfig": "libs/resilience/tsconfig.lib.json"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p libs/resilience/tsconfig.lib.json"
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/libs/resilience"],
+      "options": {
+        "jestConfig": "libs/resilience/jest.config.cts",
+        "passWithNoTests": false
+      }
+    }
+  }
+}

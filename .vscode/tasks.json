@@ -1,0 +1,28 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Dashboard: start everything",
+      "type": "shell",
+      "command": "pnpm dev",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Dashboard: verify foundation",
+      "type": "shell",
+      "command": "pnpm check",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Dashboard: stop infrastructure",
+      "type": "shell",
+      "command": "pnpm infra:down",
+      "problemMatcher": []
+    }
+  ]
+}

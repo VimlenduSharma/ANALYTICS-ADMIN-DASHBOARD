@@ -1,0 +1,25 @@
+{
+  "name": "contracts",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/contracts/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:contracts"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/contracts",
+        "main": "libs/contracts/src/index.ts",
+        "tsConfig": "libs/contracts/tsconfig.lib.json",
+        "assets": ["libs/contracts/*.md"]
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p libs/contracts/tsconfig.lib.json"
+      }
+    }
+  }
+}

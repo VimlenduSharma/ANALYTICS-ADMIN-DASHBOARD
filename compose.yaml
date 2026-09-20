@@ -1,0 +1,70 @@
+name: analytics-admin-dashboard
+
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Run pnpm env:prepare first}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run pnpm env:prepare first}
+      POSTGRES_USER: ${POSTGRES_USER:?Run pnpm env:prepare first}
+    ports:
+      - '127.0.0.1:${POSTGRES_HOST_PORT:-55432}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7.4.5-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes', '--loglevel', 'warning']
+    ports:
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    profiles: [observability]
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      - '127.0.0.1:59090:9090'
+    volumes:
+      - './observability/prometheus:/etc/prometheus:ro'
+      - 'prometheus-data:/prometheus'
+
+  grafana:
+    image: grafana/grafana:13.2.0
+    profiles: [observability]
+    depends_on: [prometheus]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: 'true'
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    ports:
+      - '127.0.0.1:53000:3000'
+    volumes:
+      - './observability/grafana/provisioning:/etc/grafana/provisioning:ro'
+      - './observability/grafana/dashboards:/var/lib/grafana/dashboards:ro'
+      - 'grafana-data:/var/lib/grafana'
+
+volumes:
+  grafana-data:
+  postgres-data:
+  prometheus-data:
+  redis-data:

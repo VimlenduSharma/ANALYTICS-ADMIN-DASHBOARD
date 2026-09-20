@@ -1,0 +1,208 @@
+<article class="page">
+  <header class="page-heading">
+    <div>
+      <a routerLink="/" class="back-link">← Workspace</a>
+      <p class="eyebrow">Organization security</p>
+      <h1>Team access</h1>
+      <p>
+        Membership changes are tenant-scoped, policy checked, and recorded in
+        audit history.
+      </p>
+    </div>
+    @if (membership(); as access) {
+    <span class="role-badge">Your role · {{ access.role }}</span>
+    }
+  </header>
+
+  @if (data.actionError(); as message) {
+  <aad-banner
+    title="Change not applied"
+    tone="error"
+    [dismissible]="true"
+    (dismissed)="data.actionError.set(undefined)"
+    >{{ message }}</aad-banner
+  >
+  } @if (data.state(); as state) { @switch (state.kind) { @case ('loading') {
+  <aad-state-panel
+    kind="loading"
+    title="Loading team policy"
+    message="Resolving members and audit events."
+  />
+  } @case ('error') {
+  <aad-state-panel
+    kind="error"
+    title="Team access is unavailable"
+    [message]="state.message"
+    actionLabel="Try again"
+    (action)="data.load(organizationId)"
+  />
+  } @case ('ready') {
+  <section class="team-grid">
+    <article class="members-card">
+      <header>
+        <div>
+          <p class="card-kicker">{{ state.team.organization.name }}</p>
+          <h2>Members</h2>
+        </div>
+        <span>{{ state.team.members.length }} active</span>
+      </header>
+      <div
+        class="table-wrap"
+        role="region"
+        aria-label="Team members"
+        tabindex="0"
+      >
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Person</th>
+              <th scope="col">Role</th>
+              <th scope="col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (member of state.team.members; track member.userId) {
+            <tr>
+              <td>
+                <div class="person">
+                  <span aria-hidden="true"
+                    >{{ member.displayName.slice(0, 1).toUpperCase() }}</span
+                  >
+                  <div>
+                    <strong>{{ member.displayName }}</strong
+                    ><small>{{ member.email }}</small>
+                  </div>
+                </div>
+              </td>
+              <td>
+                @if (canManage(member)) {
+                <select
+                  [value]="member.role"
+                  (change)="changeRole(member, $event)"
+                  [disabled]="savingUserId() === member.userId"
+                  [attr.aria-label]="'Role for ' + member.displayName"
+                >
+                  @for (role of rolesFor(); track role) {
+                  <option [value]="role">{{ role }}</option>
+                  }
+                </select>
+                } @else {
+                <span class="role-text">{{ member.role }}</span>
+                }
+              </td>
+              <td class="actions">
+                @if (canManage(member)) {
+                <button
+                  type="button"
+                  (click)="pendingRemoval.set(member)"
+                  [disabled]="savingUserId() === member.userId"
+                >
+                  Remove
+                </button>
+                }
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <aside class="add-card">
+      <p class="card-kicker">Existing directory user</p>
+      <h2>Add member</h2>
+      <p>
+        The person must sign in once through the configured provider before
+        assignment.
+      </p>
+      <form [formGroup]="memberForm" (ngSubmit)="addMember()" novalidate>
+        <aad-field
+          [control]="memberForm.controls.email"
+          fieldId="member-email"
+          label="Work email"
+          type="email"
+          autocomplete="email"
+          placeholder="name@company.com"
+          errorText="Enter a valid email address."
+          [maxLength]="320"
+          [required]="true"
+        />
+        <label for="member-role">Starting role</label>
+        <select id="member-role" formControlName="role">
+          @for (role of assignableRoles(); track role) {
+          <option [value]="role">{{ role }}</option>
+          }
+        </select>
+        <button class="ui-button" type="submit">Add member</button>
+      </form>
+    </aside>
+  </section>
+
+  <section class="audit-section" aria-labelledby="audit-title">
+    <header>
+      <div>
+        <p class="card-kicker">Durable history</p>
+        <h2 id="audit-title">Recent access events</h2>
+      </div>
+      <p>Newest first · up to 50 events</p>
+    </header>
+    @if (state.auditEvents.length) {
+    <ol>
+      @for (event of state.auditEvents; track event.id) {
+      <li>
+        <span aria-hidden="true"></span>
+        <div>
+          <strong>{{ eventLabel(event.eventType) }}</strong>
+          <p>
+            {{ event.actorDisplayName || 'System' }} · {{ event.createdAt |
+            date: 'medium' }}
+          </p>
+        </div>
+        <code>{{ event.targetType || 'organization' }}</code>
+      </li>
+      }
+    </ol>
+    } @else {
+    <aad-state-panel
+      kind="empty"
+      title="No access changes yet"
+      message="Events will appear here when membership or role settings change."
+      [compact]="true"
+    />
+    }
+  </section>
+  } } } @if (pendingRemoval(); as member) {
+  <aad-dialog
+    [open]="true"
+    labelledBy="remove-title"
+    describedBy="remove-description"
+    (dismissed)="pendingRemoval.set(undefined)"
+  >
+    <div class="confirm-content">
+      <p class="card-kicker">Confirm access removal</p>
+      <h2 id="remove-title">Remove {{ member.displayName }}?</h2>
+      <p id="remove-description">
+        They will immediately lose access to this organization. The event
+        remains in audit history.
+      </p>
+      <div>
+        <button
+          class="ui-button secondary"
+          type="button"
+          (click)="pendingRemoval.set(undefined)"
+        >
+          Cancel
+        </button>
+        <button
+          class="ui-button danger"
+          type="button"
+          (click)="confirmRemoval()"
+          [disabled]="savingUserId() === member.userId"
+        >
+          Remove access
+        </button>
+      </div>
+    </div>
+  </aad-dialog>
+  }
+</article>

@@ -1,0 +1,92 @@
+{
+  "name": "web",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "aad",
+  "sourceRoot": "apps/web/src",
+  "cli": {
+    "cache": {
+      "enabled": false
+    }
+  },
+  "tags": ["scope:web", "type:app"],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/web",
+        "browser": "apps/web/src/main.ts",
+        "tsConfig": "apps/web/tsconfig.app.json",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/web/public"
+          }
+        ],
+        "styles": ["apps/web/src/styles.css"]
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "12kb",
+              "maximumError": "14kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
+      "configurations": {
+        "production": {
+          "buildTarget": "web:build:production"
+        },
+        "development": {
+          "buildTarget": "web:build:development"
+        }
+      },
+      "options": {
+        "proxyConfig": "apps/web/proxy.conf.json"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p apps/web/tsconfig.app.json"
+      }
+    },
+    "test": {
+      "executor": "@angular/build:unit-test",
+      "options": {
+        "watch": false
+      }
+    },
+    "serve-static": {
+      "continuous": true,
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "web:build",
+        "port": 4200,
+        "staticFilePath": "dist/apps/web/browser",
+        "spa": true
+      }
+    }
+  }
+}

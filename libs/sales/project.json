@@ -1,0 +1,32 @@
+{
+  "name": "sales",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/sales/src",
+  "projectType": "library",
+  "tags": ["scope:server", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/sales",
+        "main": "libs/sales/src/index.ts",
+        "tsConfig": "libs/sales/tsconfig.lib.json"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p libs/sales/tsconfig.lib.json"
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/libs/sales"],
+      "options": {
+        "jestConfig": "libs/sales/jest.config.cts",
+        "passWithNoTests": false
+      }
+    }
+  }
+}

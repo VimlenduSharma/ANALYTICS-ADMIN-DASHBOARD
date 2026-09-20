@@ -1,0 +1,44 @@
+{
+  "name": "migrations",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/migrations/src",
+  "projectType": "application",
+  "tags": ["scope:server", "type:app"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "webpack-cli build",
+        "env": { "NODE_ENV": "production" },
+        "cwd": "apps/migrations"
+      }
+    },
+    "prune-lockfile": {
+      "dependsOn": ["build"],
+      "cache": true,
+      "executor": "@nx/js:prune-lockfile",
+      "outputs": [
+        "{workspaceRoot}/dist/apps/migrations/package.json",
+        "{workspaceRoot}/dist/apps/migrations/pnpm-lock.yaml"
+      ],
+      "options": { "buildTarget": "build" }
+    },
+    "copy-workspace-modules": {
+      "dependsOn": ["build"],
+      "cache": true,
+      "executor": "@nx/js:copy-workspace-modules",
+      "outputs": ["{workspaceRoot}/dist/apps/migrations/workspace_modules"],
+      "options": { "buildTarget": "build" }
+    },
+    "prune": {
+      "dependsOn": ["prune-lockfile", "copy-workspace-modules"],
+      "executor": "nx:noop"
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p apps/migrations/tsconfig.app.json"
+      }
+    }
+  }
+}

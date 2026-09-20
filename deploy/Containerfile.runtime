@@ -1,0 +1,33 @@
+FROM node:24.19.0-bookworm-slim AS build
+
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+WORKDIR /workspace
+
+RUN corepack enable && corepack prepare pnpm@11.19.0 --activate
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml nx.json tsconfig.base.json ./
+COPY apps ./apps
+COPY libs ./libs
+COPY tools/run-nx.mjs ./tools/run-nx.mjs
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+  pnpm install --frozen-lockfile
+ARG APP
+RUN pnpm nx prune "$APP"
+
+FROM node:24.19.0-bookworm-slim AS runtime
+
+ENV NODE_ENV=production
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@11.19.0 --activate
+ARG APP
+COPY --from=build /workspace/dist/apps/${APP}/ ./
+COPY --from=build /workspace/pnpm-workspace.yaml ./pnpm-workspace.yaml
+RUN --mount=type=cache,id=pnpm-runtime-store,target=/pnpm/store \
+  pnpm install --prod --frozen-lockfile \
+  && chown -R node:node /app
+
+USER node
+CMD ["node", "main.js"]

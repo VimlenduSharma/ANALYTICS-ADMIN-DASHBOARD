@@ -1,0 +1,35 @@
+<section class="invitation-page" aria-labelledby="invitation-title">
+  <p class="eyebrow">Team access</p>
+  <h1 id="invitation-title">Accept team invitation</h1>
+
+  @if (accepted()) {
+  <p role="status">
+    Your access is active. You can now review this organization's reporting.
+  </p>
+  <a
+    class="ui-button"
+    [routerLink]="['/organizations', organizationId, 'sales']"
+  >
+    Open sales workspace
+  </a>
+  } @else {
+  <p>
+    Signed in as <strong>{{ session.user()?.email }}</strong>. Continue only if
+    this is the address that received the invitation.
+  </p>
+  @if (error(); as message) {
+  <p class="error" role="alert">{{ message }}</p>
+  }
+  <div class="actions">
+    <button
+      class="ui-button"
+      type="button"
+      [disabled]="!token || pending()"
+      (click)="accept()"
+    >
+      {{ pending() ? 'Accepting…' : 'Accept invitation' }}
+    </button>
+    <a routerLink="/">Return to workspace</a>
+  </div>
+  }
+</section>
