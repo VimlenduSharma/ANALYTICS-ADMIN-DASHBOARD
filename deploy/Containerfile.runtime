@@ -9,8 +9,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml nx.json tsconfig.base.json 
 COPY apps ./apps
 COPY libs ./libs
 COPY tools/run-nx.mjs ./tools/run-nx.mjs
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-  pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 ARG APP
 RUN pnpm nx prune "$APP" && pnpm nx build migrations
 
@@ -26,8 +25,7 @@ ARG APP
 COPY --from=build /workspace/dist/apps/${APP}/ ./
 COPY --from=build /workspace/dist/apps/migrations/main.js ./migrations/main.js
 COPY --from=build /workspace/pnpm-workspace.yaml ./pnpm-workspace.yaml
-RUN --mount=type=cache,id=pnpm-runtime-store,target=/pnpm/store \
-  pnpm install --prod --frozen-lockfile \
+RUN pnpm install --prod --frozen-lockfile \
   && chown -R node:node /app
 
 USER node
