@@ -21,22 +21,23 @@ The supported no-monthly-charge profile is intended for interviews, product demo
 Use this allocation:
 
 - Cloudflare Pages: Angular assets, TLS, CDN/WAF, `/healthz`, and the same-origin `/api` proxy;
-- Northflank Sandbox: one API service, one worker service, one PostgreSQL add-on, and one migration job;
+- Railway: one API service and one continuously running worker service;
+- Neon: PostgreSQL 17 with separate owner and runtime credentials;
 - Upstash Redis: TLS Redis endpoint for sessions, rate admission, and coordination;
 - Auth0: a Regular Web Application using Authorization Code with PKCE; and
-- provider-issued `pages.dev` and `code.run` hostnames so no domain purchase is required.
+- provider-issued `pages.dev` and `up.railway.app` hostnames so no domain purchase is required.
 
-Build Cloudflare Pages from `main` with `pnpm build:web:pages` and publish `dist/apps/web/browser`. Set `NODE_VERSION=24.19.0` and `PNPM_VERSION=11.19.0` as non-secret build variables. Configure `API_ORIGIN` and `EDGE_PROXY_SECRET` as encrypted Pages Function secrets. `API_ORIGIN` is the HTTPS Northflank API origin; `EDGE_PROXY_SECRET` is a generated value of at least 32 characters and must exactly match the API service secret.
+Build Cloudflare Pages from `main` with `pnpm build:web:pages` and publish `dist/apps/web/browser`. Set `NODE_VERSION=24.19.0` and `PNPM_VERSION=11.19.0` as non-secret build variables. Configure `API_ORIGIN` and `EDGE_PROXY_SECRET` as encrypted Pages Function secrets. `API_ORIGIN` is the HTTPS Railway API origin; `EDGE_PROXY_SECRET` is a generated value of at least 32 characters and must exactly match the API service secret.
 
-Create the Northflank services from `deploy/Containerfile.runtime` with these build arguments:
+Create the Railway services from `deploy/Containerfile.runtime` with these build arguments:
 
 | Workload       | `APP`        | Public port | Health check           |
 | -------------- | ------------ | ----------- | ---------------------- |
 | API service    | `api`        | `3000`      | `/api/v1/health/ready` |
 | Worker service | `worker`     | none        | process lifecycle      |
-| Migration job  | `migrations` | none        | successful exit        |
+| API pre-deploy | included in API image | none | `node migrations/main.js` |
 
-The API and worker receive the runtime database URL; only the migration job receives the database-owner URL. Create a separate non-owner login role for `RUNTIME_DATABASE_ROLE` before the first migration. Set the runtime PostgreSQL pool maximum to account for both processes and remain below the add-on connection limit.
+Configure `node migrations/main.js` as the API service's Railway pre-deploy command. The runtime image includes this executable alongside the selected application so the hook runs against the exact release being deployed. The API and worker receive the pooled runtime database URL; only the API pre-deploy environment receives the direct database-owner URL. Create a separate non-owner Neon role for `RUNTIME_DATABASE_ROLE` before the first migration. Set the runtime PostgreSQL pool maximum to account for both processes and remain below Neon's connection limit.
 
 Use the Cloudflare `pages.dev` origin as `WEB_ORIGIN`. Register `${WEB_ORIGIN}/api/v1/auth/callback` as the Auth0 Allowed Callback URL and `${WEB_ORIGIN}` as the Allowed Logout and Web Origins. Store Auth0, PostgreSQL, Redis, signing, encryption, metrics, and edge values only in provider secret stores.
 

@@ -12,7 +12,7 @@ COPY tools/run-nx.mjs ./tools/run-nx.mjs
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
   pnpm install --frozen-lockfile
 ARG APP
-RUN pnpm nx prune "$APP"
+RUN pnpm nx prune "$APP" && pnpm nx build migrations
 
 FROM node:24.19.0-bookworm-slim AS runtime
 
@@ -24,6 +24,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@11.19.0 --activate
 ARG APP
 COPY --from=build /workspace/dist/apps/${APP}/ ./
+COPY --from=build /workspace/dist/apps/migrations/main.js ./migrations/main.js
 COPY --from=build /workspace/pnpm-workspace.yaml ./pnpm-workspace.yaml
 RUN --mount=type=cache,id=pnpm-runtime-store,target=/pnpm/store \
   pnpm install --prod --frozen-lockfile \
